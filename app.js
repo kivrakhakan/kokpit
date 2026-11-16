@@ -9,7 +9,7 @@
   const DEMO = /[?&]demo=1/.test(location.search);
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const S = { db: null, kul: null, ekip: null, durum: null, guncelleme: 0, komutlar: [], ata: null, secili: null, tumu: false };
+  const S = { db: null, kul: null, ekip: null, durum: null, guncelleme: 0, komutlar: [], tikler: {}, ata: null, secili: null, tumu: false };
 
   /* ---------------- yardımcılar ---------------- */
   const trSaat = (ms) => new Date(ms).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' });
@@ -158,6 +158,9 @@
     if (aktif.some((t) => t.yasDk >= e.acil)) yap.push(['🚗', 'ACİL: ' + aktif.filter((t) => t.yasDk >= e.acil).length + ' talep ' + e.acil + ' dk\'dan uzun süredir şoför bekliyor', 'admin/operasyon-merkezi']);
     if (aktif.length && !musait.length) yap.push(['⚠', 'Müsait şoför yok; şoförleri arayın', 'admin/soforler']);
     if (+say.incelenen_sos > 0) yap.push(['🔎', say.incelenen_sos + ' SOS incelemede', 'admin/operasyon-merkezi']);
+    const basv = Array.isArray(d.basvurular) ? d.basvurular : [];
+    const bakilmamis = basv.filter((b) => !S.tikler[String(b.no)]).length;
+    if (bakilmamis) yap.push(['🧑‍✈️', bakilmamis + ' şoför başvurusuna henüz bakılmadı', 'admin/sofor-basvurulari']);
     if (yap.length) {
       h += '<div class="kart"><h2>Kontrol et <span>admin panel</span></h2>' + yap.map((y) =>
         '<a class="satir yap" href="' + ADMIN + y[2] + '" target="_blank" rel="noopener"><span style="font-size:18px">' + y[0] + '</span><div class="ad">' + esc(y[1]) + '</div><span class="ok">›</span></a>').join('') + '</div>';
@@ -208,6 +211,35 @@
     });
     h += '</div>';
 
+    // Şoför başvuruları (yalnızca bekleyenler; onay/ret admin panelden)
+    if (basv.length) {
+      const gun = (b) => { const m = String(b.tarih || '').match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/); return m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') : '?'; };
+      const trGun = (ms) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
+      const bugun = trGun(now), dun = trGun(now - 86400000);
+      const gunAd = (g) => g === bugun ? 'Bugün' : g === dun ? 'Dün' : g === '?' ? 'Tarihsiz' : g.split('-').reverse().join('.');
+      const bakilan = basv.filter((b) => S.tikler[String(b.no)]).length;
+      const bugunku = basv.filter((b) => gun(b) === bugun).length;
+      const yuzde = Math.round((bakilan / basv.length) * 100);
+      h += '<div class="kart basv"><h2>Şoför başvuruları <span>' + bakilan + '/' + basv.length + ' bakıldı</span></h2>' +
+        '<div class="basv-ust">' + (bugunku ? '✨ <b>Bugün ' + bugunku + ' yeni başvuru</b>' : 'Bugün yeni başvuru yok') +
+        (bakilan === basv.length ? ' · <b style="color:var(--yesil)">Hepsine bakıldı 🎉</b>' : '') + '</div>' +
+        '<div class="cubuk" style="margin:6px 0 4px"><i style="width:' + yuzde + '%;background:var(--yesil)"></i></div>';
+      const gruplar = {};
+      basv.forEach((b, i) => { const g = gun(b); (gruplar[g] = gruplar[g] || []).push([b, i]); });
+      Object.keys(gruplar).sort().reverse().forEach((g) => {
+        h += '<div class="basv-gun">' + gunAd(g) + ' · ' + gruplar[g].length + '</div>';
+        gruplar[g].forEach(([b, i]) => {
+          const tik = S.tikler[String(b.no)];
+          const eksik = [!b.src ? 'SRC' : '', !b.psiko ? 'psikoteknik' : ''].filter(Boolean).join(', ');
+          h += '<div class="satir' + (tik ? ' basv-tamam' : '') + '"><button class="tik' + (tik ? ' on' : '') + '" data-tik="' + i + '" aria-label="Baktım">' + (tik ? '✓' : '') + '</button>' +
+            '<div class="ad tikla" data-basvuru="' + i + '">' + esc(b.ad || 'Başvuru') +
+            '<small>' + (tik ? '✓ ' + esc(tik.kim) + ' · ' + trSaat(Date.parse(tik.zaman)) + ' · ' : '') + '#' + esc(b.no) + ' · ' + esc(String(b.tarih || '').split(' ')[1] || '') +
+            (b.arac ? ' · ' + esc(b.arac) : '') + (eksik ? ' · eksik: ' + eksik : '') + '</small></div></div>';
+        });
+      });
+      h += '</div>';
+    }
+
     // Son işlemler
     const son = S.komutlar.slice(0, 6);
     if (son.length) {
@@ -225,6 +257,8 @@
     document.querySelectorAll('[data-ata]').forEach((b) => { b.onclick = () => ataAc(talepler[+b.dataset.ata]); });
     document.querySelectorAll('[data-detay]').forEach((b) => { b.onclick = () => talepDetay(talepler[+b.dataset.detay], musait); });
     document.querySelectorAll('[data-sofor]').forEach((b) => { b.onclick = () => soforDetay(sfSira[+b.dataset.sofor]); });
+    document.querySelectorAll('[data-basvuru]').forEach((b) => { b.onclick = () => basvuruDetay(basv[+b.dataset.basvuru]); });
+    document.querySelectorAll('[data-tik]').forEach((b) => { b.onclick = () => tikle(basv[+b.dataset.tik], b); });
     if ($('cikis')) $('cikis').onclick = async () => { await S.db.auth.signOut(); location.reload(); };
     if (S.ata) cizAta();
   }
@@ -277,6 +311,43 @@
     h += '<div class="ikili" style="margin-top:12px">' +
       (sayiMi(s.enlem) ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + harita(s) + '" target="_blank" rel="noopener">📍 Haritada aç</a>' : '<span></span>') +
       (s.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">📞 Ara</a>' : '<span></span>') + '</div>';
+    pencere(h);
+  }
+
+  // Başvuruya "baktım" tiki: bulutta ortak (herkes görür); ikinci dokunuş geri alır
+  async function tikle(b, btn) {
+    const no = String(b.no);
+    const vardi = S.tikler[no];
+    btn.disabled = true;
+    if (DEMO) {
+      if (vardi) delete S.tikler[no]; else S.tikler[no] = { kim: 'Demo', zaman: new Date().toISOString() };
+      ciz();
+      return;
+    }
+    const { error } = vardi
+      ? await S.db.from('basvuru_takip').delete().eq('no', no)
+      : await S.db.from('basvuru_takip').insert({ no: no, kim: S.ekip.ad });
+    if (error) { bildir('Kaydedilemedi: ' + error.message); btn.disabled = false; return; }
+    if (!vardi) bildir('✓ ' + (b.ad || 'Başvuru') + ' işaretlendi');
+    await tikleriYukle();
+  }
+  async function tikleriYukle() {
+    const { data } = await S.db.from('basvuru_takip').select('no,kim,zaman');
+    S.tikler = {};
+    (data || []).forEach((t) => { S.tikler[t.no] = t; });
+    ciz();
+  }
+  function basvuruDetay(b) {
+    let h = '<h3>' + esc(b.ad || 'Başvuru') + '</h3><div class="alt">Başvuru #' + esc(b.no) + ' · ' + esc(b.tarih) + ' · ' + esc(b.durum || '') + '</div>';
+    h += bilgi('Telefon', esc(b.telefon));
+    h += bilgi('Araç türleri', esc(b.arac));
+    h += bilgi('Ehliyet bitiş', esc(b.ehliyet_bitis));
+    h += bilgi('SRC belgesi', b.src ? 'var' : 'yok');
+    h += bilgi('Psikoteknik', b.psiko ? 'var' : 'yok');
+    h += '<div class="ikili" style="margin-top:12px">' +
+      (b.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(b.telefon).replace(/[^\d+]/g, '')) + '">📞 Ara</a>' : '<span></span>') +
+      '<a class="btn" style="text-align:center;text-decoration:none" href="' + ADMIN + 'admin/sofor-basvurulari" target="_blank" rel="noopener">Admin\'de aç</a></div>' +
+      '<p class="alt" style="margin-top:10px">Onay ve ret admin panelden yapılır (belgeler orada).</p>';
     pencere(h);
   }
 
@@ -372,7 +443,9 @@
     S.ekip = ek;
     await durumYukle();
     await komutlariYukle();
+    await tikleriYukle();
     S.db.channel('kokpit')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'basvuru_takip' }, () => tikleriYukle())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'durum' }, (p) => {
         if (p.new && p.new.veri) { S.durum = p.new.veri; S.guncelleme = Math.min(Date.parse(p.new.guncelleme), Date.now()); ciz(); }
       })
@@ -403,9 +476,15 @@
         { id: 4, ad: 'Emre C.', durum: 'Çevrimdışı', cevrimici: false }
       ],
       odemeler: { rozet: 1, iban: [{ ref: 'SB-48213', tutar: '1.850 TL', yas_dk: 12 }] },
+      basvurular: [
+        { no: 21, ad: 'Örnek Başvuran', durum: 'Beklemede', tarih: new Date(n - 2 * 3600000).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''), telefon: '+905550000009', arac: 'Otomobil', ehliyet_bitis: '2032-04-29', src: false, psiko: true },
+        { no: 20, ad: 'İkinci Başvuran', durum: 'Beklemede', tarih: new Date(n - 3600000).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''), arac: 'Otomobil, Minibüs', src: true, psiko: true },
+        { no: 17, ad: 'Dünkü Başvuran', durum: 'Beklemede', tarih: new Date(n - 86400000).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''), arac: 'Otomobil', src: false, psiko: false }
+      ],
       alarm: { aktif: true, susturma_bitis: null }
     };
     S.komutlar = [{ id: 1, kim: 'Burhan', tur: 'gordum', durum: 'tamam', olusturma: new Date(n - 2 * dk).toISOString() }];
+    S.tikler = { 17: { kim: 'Cio', zaman: new Date(n - 20 * dk).toISOString() } };
     ciz();
     setInterval(ciz, 15000);
   }
