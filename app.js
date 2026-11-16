@@ -125,6 +125,11 @@
       '<div class="saat">' + trSaat(now) + '<br><small>' + (S.guncelleme ? 'veri ' + sure(yas) + (yas < 60000 ? '' : ' önce') : 'veri yok') + '</small></div>' +
       (DEMO ? '' : '<button class="ikonbtn" id="cikis" title="Çıkış">⎋</button>') + '</header>';
 
+    // Telefon bildirimi
+    if (S.bildirim === 'kapali') h += '<div class="serit sari" style="display:flex;align-items:center;gap:10px"><span style="flex:1">🔔 Alarm gelince telefonun çalsın mı?</span><button class="atabtn" id="bildirimAc">Bildirimleri aç</button></div>';
+    else if (S.bildirim === 'ios') h += '<div class="serit sari">🔔 Bildirim için: Safari\'de alttaki Paylaş düğmesi → <b>Ana Ekrana Ekle</b>, sonra paneli ana ekrandaki simgeden açın.</div>';
+    else if (S.bildirim === 'engelli') h += '<div class="serit sari">🔔 Bildirimler engellenmiş. Telefon ayarlarından bu uygulamaya bildirim izni verin.</div>';
+
     // Uyarı şeritleri
     if (!S.guncelleme) h += '<div class="serit kirmizi">⚠ Henüz veri gelmedi. Bir bilgisayarda Şoför Bey eklentisi açık olmalı.</div>';
     else if (bayat) h += '<div class="serit kirmizi">⚠ İZLEME KAPALI: ' + sure(yas) + ' önceden beri eklentiden veri gelmiyor. Bir bilgisayarda Operasyon Merkezi\'ni açın. Aşağıdaki bilgiler eski.</div>';
@@ -260,6 +265,7 @@
     document.querySelectorAll('[data-basvuru]').forEach((b) => { b.onclick = () => basvuruDetay(basv[+b.dataset.basvuru]); });
     document.querySelectorAll('[data-tik]').forEach((b) => { b.onclick = () => tikle(basv[+b.dataset.tik], b); });
     if ($('cikis')) $('cikis').onclick = async () => { await S.db.auth.signOut(); location.reload(); };
+    if ($('bildirimAc')) $('bildirimAc').onclick = bildirimAc;
     if (S.ata) cizAta();
   }
 
@@ -312,6 +318,50 @@
       (sayiMi(s.enlem) ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + harita(s) + '" target="_blank" rel="noopener">📍 Haritada aç</a>' : '<span></span>') +
       (s.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">📞 Ara</a>' : '<span></span>') + '</div>';
     pencere(h);
+  }
+
+  /* ---------------- telefon bildirimi (Web Push) ---------------- */
+  const FN = C.url + '/functions/v1/push';
+  const ayrik = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  async function bildirimDurum() {
+    if (C.uygulama) return 'yok';                                   // Android uygulamasının içi (WebView) desteklemez
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return ios && !ayrik() ? 'ios' : 'yok';
+    if (Notification.permission === 'denied') return 'engelli';
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub && Notification.permission === 'granted') {
+        const { data } = await S.db.from('push_abone').select('endpoint').eq('endpoint', sub.endpoint);
+        if (data && data.length) return 'acik';
+      }
+    } catch (e) { /* kapalı say */ }
+    return 'kapali';
+  }
+  function anahtarDiz(b64) {
+    const p = '='.repeat((4 - (b64.length % 4)) % 4);
+    const s = atob((b64 + p).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(s, (c) => c.charCodeAt(0));
+  }
+  async function bildirimAc() {
+    const btn = $('bildirimAc');
+    if (btn) btn.disabled = true;
+    try {
+      const izin = await Notification.requestPermission();
+      if (izin !== 'granted') { S.bildirim = izin === 'denied' ? 'engelli' : 'kapali'; ciz(); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const { anahtar } = await fetch(FN + '?islem=anahtar').then((r) => r.json());
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: anahtarDiz(anahtar) });
+      const { error } = await S.db.from('push_abone').insert({ endpoint: sub.endpoint, abonelik: sub.toJSON(), kim: S.ekip.ad });
+      if (error && error.code !== '23505') throw new Error(error.message);
+      S.bildirim = 'acik';
+      bildir('🔔 Bildirimler açıldı. Alarm gelince telefonun çalacak.');
+      ciz();
+    } catch (e) {
+      bildir('Bildirim açılamadı: ' + (e && e.message ? e.message : e));
+      if (btn) btn.disabled = false;
+    }
   }
 
   // Başvuruya "baktım" tiki: bulutta ortak (herkes görür); ikinci dokunuş geri alır
@@ -444,6 +494,7 @@
     await durumYukle();
     await komutlariYukle();
     await tikleriYukle();
+    bildirimDurum().then((d) => { S.bildirim = d; ciz(); });
     S.db.channel('kokpit')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'basvuru_takip' }, () => tikleriYukle())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'durum' }, (p) => {
