@@ -124,6 +124,7 @@
       esc(S.ekip ? S.ekip.ad : '') + (d.merkez ? ' · kaynak: ' + esc(d.merkez) : '') + '</small></div>' +
       '<div class="saat">' + trSaat(now) + '<br><small>' + (S.guncelleme ? 'veri ' + sure(yas) + (yas < 60000 ? '' : ' önce') : 'veri yok') + '</small></div>' +
       '<button class="ikonbtn" data-karne="1" title="Haftalık karne">📊</button>' +
+      (window.ReactNativeWebView ? '<button class="ikonbtn" id="bildAyar" title="Bildirim ayarları">🔔</button>' : '') +
       (DEMO ? '' : '<button class="ikonbtn" id="cikis" title="Çıkış">⎋</button>') + '</header>';
 
     // Telefon bildirimi
@@ -268,6 +269,7 @@
     document.querySelectorAll('[data-tik]').forEach((b) => { b.onclick = () => tikle(basv[+b.dataset.tik], b); });
     if ($('cikis')) $('cikis').onclick = async () => { await S.db.auth.signOut(); location.reload(); };
     if ($('bildirimAc')) $('bildirimAc').onclick = bildirimAc;
+    if ($('bildAyar')) $('bildAyar').onclick = () => window.ReactNativeWebView.postMessage('bildirim-ayar');
     document.querySelectorAll('[data-karne]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); karneAc(); }; });
     if (S.ata) cizAta();
   }
