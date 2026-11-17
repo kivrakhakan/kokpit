@@ -123,6 +123,7 @@
     h += '<header><img class="logo" src="' + LOGO + '" alt="Şoför Bey"><div><h1>Şoför Bey Kokpit</h1><small>' +
       esc(S.ekip ? S.ekip.ad : '') + (d.merkez ? ' · kaynak: ' + esc(d.merkez) : '') + '</small></div>' +
       '<div class="saat">' + trSaat(now) + '<br><small>' + (S.guncelleme ? 'veri ' + sure(yas) + (yas < 60000 ? '' : ' önce') : 'veri yok') + '</small></div>' +
+      '<button class="ikonbtn" data-karne="1" title="Haftalık karne">📊</button>' +
       (DEMO ? '' : '<button class="ikonbtn" id="cikis" title="Çıkış">⎋</button>') + '</header>';
 
     // Telefon bildirimi
@@ -164,11 +165,12 @@
     if (aktif.length && !musait.length) yap.push(['⚠', 'Müsait şoför yok; şoförleri arayın', 'admin/soforler']);
     if (+say.incelenen_sos > 0) yap.push(['🔎', say.incelenen_sos + ' SOS incelemede', 'admin/operasyon-merkezi']);
     const basv = Array.isArray(d.basvurular) ? d.basvurular : [];
+    if (S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1) yap.unshift(['📊', 'Haftalık karne hazır: okuyup "Okudum" de', '#karne']);
     const bakilmamis = basv.filter((b) => !S.tikler[String(b.no)]).length;
     if (bakilmamis) yap.push(['🧑‍✈️', bakilmamis + ' şoför başvurusuna henüz bakılmadı', 'admin/sofor-basvurulari']);
     if (yap.length) {
       h += '<div class="kart"><h2>Kontrol et <span>admin panel</span></h2>' + yap.map((y) =>
-        '<a class="satir yap" href="' + ADMIN + y[2] + '" target="_blank" rel="noopener"><span style="font-size:18px">' + y[0] + '</span><div class="ad">' + esc(y[1]) + '</div><span class="ok">›</span></a>').join('') + '</div>';
+        (y[2] === '#karne' ? '<a class="satir yap" href="#" data-karne="1">' : '<a class="satir yap" href="' + ADMIN + y[2] + '" target="_blank" rel="noopener">') + '<span style="font-size:18px">' + y[0] + '</span><div class="ad">' + esc(y[1]) + '</div><span class="ok">›</span></a>').join('') + '</div>';
     }
 
     h += '<div class="sayilar">' +
@@ -266,6 +268,7 @@
     document.querySelectorAll('[data-tik]').forEach((b) => { b.onclick = () => tikle(basv[+b.dataset.tik], b); });
     if ($('cikis')) $('cikis').onclick = async () => { await S.db.auth.signOut(); location.reload(); };
     if ($('bildirimAc')) $('bildirimAc').onclick = bildirimAc;
+    document.querySelectorAll('[data-karne]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); karneAc(); }; });
     if (S.ata) cizAta();
   }
 
@@ -318,6 +321,64 @@
       (sayiMi(s.enlem) ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + harita(s) + '" target="_blank" rel="noopener">📍 Haritada aç</a>' : '<span></span>') +
       (s.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">📞 Ara</a>' : '<span></span>') + '</div>';
     pencere(h);
+  }
+
+  /* ---------------- haftalık karne ---------------- */
+  async function karneYukle() {
+    if (DEMO) return;
+    const { data } = await S.db.from('karneler').select('hafta,veri,olusturma').order('hafta', { ascending: false }).limit(1);
+    if (!data || !data.length) { S.karne = null; ciz(); return; }
+    const k = data[0];
+    const { data: ok } = await S.db.from('karne_okuma').select('kim,zaman').eq('hafta', k.hafta);
+    const { data: ek } = await S.db.from('ekip').select('ad');
+    S.karne = { hafta: k.hafta, veri: k.veri, okuyanlar: (ok || []).map((x) => x.kim), okuma: ok || [], ekip: (ek || []).map((x) => x.ad) };
+    ciz();
+  }
+  function cubuklar(dizi, etiketler, renk) {
+    const en = Math.max(1, ...dizi);
+    return '<div class="kr-grafik">' + dizi.map((n, i) => '<div class="kr-sut" title="' + esc(etiketler[i]) + ': ' + n + '"><i style="height:' + Math.round((n / en) * 100) + '%;background:' + renk + '"></i><span>' + esc(etiketler[i]) + '</span></div>').join('') + '</div>';
+  }
+  function liste(a, bos) {
+    return a && a.length ? a.map((x) => '<div class="kom"><b>' + esc(x.kim || x.ad) + '</b> · ' + x.n + '</div>').join('') : '<div class="bos">' + bos + '</div>';
+  }
+  function karneAc() {
+    const k = S.karne;
+    if (!k) { pencere('<h3>Haftalık karne</h3><div class="alt">Henüz karne yok. İlk karne, veriler biriktikten sonra pazartesi sabahı hazırlanır.</div>'); return; }
+    const v = k.veri || {};
+    const tarih = String(k.hafta).split('-').reverse().join('.');
+    const fark = v.onceki_talep != null && v.onceki_talep > 0 ? Math.round(((v.talep - v.onceki_talep) / v.onceki_talep) * 100) : null;
+    const hizliYuzde = v.talep ? Math.round((v.hizli / v.talep) * 100) : 0;
+    const saatler = (v.saatler || []).map((n, i) => n);
+    const yogun = saatler.length ? saatler.indexOf(Math.max(...saatler)) : -1;
+    const okudum = S.ekip && k.okuyanlar.indexOf(S.ekip.ad) !== -1;
+    let h = '<h3>📊 Haftalık karne</h3><div class="alt">' + tarih + ' haftası (pazartesi–pazar)</div>' +
+      '<div class="sayilar" style="margin-top:6px">' +
+      '<div class="sayi"><b>' + (v.talep || 0) + '</b><span>Talep' + (fark != null ? ' · ' + (fark >= 0 ? '▲' : '▼') + Math.abs(fark) + '%' : '') + '</span></div>' +
+      '<div class="sayi"><b>' + (v.ort_dk != null ? String(v.ort_dk).replace('.', ',') : '–') + '</b><span>Ort. atama (dk)</span></div>' +
+      '<div class="sayi"><b style="color:' + (v.acil ? 'var(--kirmizi)' : 'var(--yesil)') + '">' + (v.acil || 0) + '</b><span>ACİL</span></div></div>' +
+      '<div class="kom">⚡ 5 dakikada atanan: <b>%' + hizliYuzde + '</b> · en uzun bekleme: <b>' + (v.en_uzun_dk != null ? v.en_uzun_dk + ' dk' : '–') + '</b>' + (yogun >= 0 && saatler[yogun] ? ' · en yoğun saat: <b>' + String(yogun).padStart(2, '0') + ':00</b>' : '') + '</div>' +
+      '<div class="basv-gun">Günlere göre talep</div>' + cubuklar(v.gunler || [], ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'], 'var(--mavi)') +
+      '<div class="basv-gun">Saatlere göre talep</div>' + cubuklar(saatler, saatler.map((_, i) => (i % 3 === 0 ? String(i) : '')), 'var(--sari)') +
+      '<div class="basv-gun">En çok talep gelen yerler</div>' + liste(v.ilceler, 'Veri yok') +
+      '<div class="basv-gun">Ekip: alarm "Gördüm"</div>' + liste(v.gordum, 'Kayıt yok') +
+      '<div class="basv-gun">Ekip: başvuru tiki</div>' + liste(v.basvuru_tik, 'Kayıt yok') +
+      '<div class="basv-gun">Ekip: panelden şoför atama</div>' + liste(v.panel_atama, 'Kayıt yok') +
+      '<div class="basv-gun">Kim okudu</div>' + (k.ekip || []).map((a) => {
+        const o = k.okuma.find((x) => x.kim === a);
+        return '<div class="kom">' + (o ? '✅ <b>' + esc(a) + '</b> · ' + new Date(o.zaman).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '⏳ <b>' + esc(a) + '</b> · henüz okumadı') + '</div>';
+      }).join('') +
+      (okudum ? '<div class="serit" style="background:#0d2a1a;border:1px solid #1b4a2f;color:#8fe3b0;margin-top:12px">✅ Okudun, teşekkürler.</div>' : '<button class="btn yesil" id="okudum" style="margin-top:12px">Okudum ✓</button>');
+    pencere(h);
+    if ($('okudum')) $('okudum').onclick = async () => {
+      $('okudum').disabled = true;
+      if (!DEMO) {
+        const { error } = await S.db.from('karne_okuma').insert({ hafta: k.hafta, kim: S.ekip.ad });
+        if (error && error.code !== '23505') { bildir('Kaydedilemedi: ' + error.message); $('okudum').disabled = false; return; }
+        await karneYukle();
+      } else { k.okuyanlar.push(S.ekip.ad); k.okuma.push({ kim: S.ekip.ad, zaman: new Date().toISOString() }); }
+      bildir('✅ Karne okundu olarak işaretlendi');
+      karneAc();
+    };
   }
 
   /* ---------------- telefon bildirimi (Web Push) ---------------- */
@@ -502,9 +563,12 @@
     await durumYukle();
     await komutlariYukle();
     await tikleriYukle();
+    karneYukle();
+    if (location.hash === '#karne') setTimeout(karneAc, 800);
     bildirimDurum().then((d) => { S.bildirim = d; ciz(); });
     S.db.channel('kokpit')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'basvuru_takip' }, () => tikleriYukle())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'karne_okuma' }, () => karneYukle())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'durum' }, (p) => {
         if (p.new && p.new.veri) { S.durum = p.new.veri; S.guncelleme = Math.min(Date.parse(p.new.guncelleme), Date.now()); ciz(); }
       })
@@ -544,6 +608,11 @@
     };
     S.komutlar = [{ id: 1, kim: 'Burhan', tur: 'gordum', durum: 'tamam', olusturma: new Date(n - 2 * dk).toISOString() }];
     S.tikler = { 17: { kim: 'Cio', zaman: new Date(n - 20 * dk).toISOString() } };
+    S.karne = { hafta: '2026-11-09', okuyanlar: ['Cio'], okuma: [{ kim: 'Cio', zaman: new Date(n - 3 * 3600000).toISOString() }], ekip: ['Burhan', 'Cio', 'Demo'],
+      veri: { talep: 46, onceki_talep: 39, ort_dk: 4.3, en_uzun_dk: 17, hizli: 38, acil: 2, gunler: [5, 6, 7, 6, 8, 9, 5],
+        saatler: [1, 0, 0, 0, 0, 1, 2, 4, 5, 3, 2, 2, 3, 2, 2, 3, 4, 3, 2, 2, 1, 1, 1, 1],
+        ilceler: [{ ad: 'Kuşadası', n: 21 }, { ad: 'Selçuk', n: 9 }, { ad: 'Davutlar', n: 6 }],
+        gordum: [{ kim: 'Burhan', n: 7 }, { kim: 'Cio', n: 4 }], basvuru_tik: [{ kim: 'Cio', n: 12 }], panel_atama: [{ kim: 'Burhan', n: 3 }] } };
     ciz();
     setInterval(ciz, 15000);
   }
