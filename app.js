@@ -323,8 +323,16 @@
   /* ---------------- telefon bildirimi (Web Push) ---------------- */
   const FN = C.url + '/functions/v1/push';
   const ayrik = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  // Android uygulaması (ŞB Kokpit APK) kendi bildirim adresini verir; panel onu giriş yapan kişi adına kaydeder
+  async function expoKaydet() {
+    const t = window.SB_EXPO_TOKEN;
+    if (!t || !S.ekip || !S.db) return;
+    const { error } = await S.db.from('push_abone').insert({ endpoint: 'expo:' + t, abonelik: { expo: t }, kim: S.ekip.ad });
+    if (!error || error.code === '23505') { S.bildirim = 'acik'; ciz(); }
+  }
+  window.addEventListener('sb-expo-token', expoKaydet);
   async function bildirimDurum() {
-    if (C.uygulama) return 'yok';                                   // Android uygulamasının içi (WebView) desteklemez
+    if (window.ReactNativeWebView || C.uygulama) { if (window.SB_EXPO_TOKEN) await expoKaydet(); return window.SB_EXPO_TOKEN ? 'acik' : 'yok'; }
     const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return ios && !ayrik() ? 'ios' : 'yok';
     if (Notification.permission === 'denied') return 'engelli';
