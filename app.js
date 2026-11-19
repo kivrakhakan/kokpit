@@ -348,27 +348,34 @@
   function yanitOner(t, basv) {
     const ad = String(t.ad || '').split(' ')[0];
     const kisi = (t.mesajlar || []).filter((m) => m.kim === 'kisi');
-    const metin = kucuk(kisi.map((m) => m.metin).join(' ') + ' ' + t.konu);
-    const sonKisa = kisi.length > 1 && kisi[kisi.length - 1].metin.trim().length <= 3;   // "?" gibi hatırlatma
+    // Önce kişinin kendi yazdığına bakılır; konu (ör. "Şoför / Üye") yalnızca mesajdan bir şey çıkmazsa kullanılır
+    const metin = kucuk(kisi.map((m) => m.metin).join(' '));
+    const konu = kucuk(t.konu);
+    const sonKisa = kisi.length > 1 && /^[\s?.!]+$/.test(kisi[kisi.length - 1].metin);   // "?", "?????" gibi hatırlatma
     const var_ = (...k) => k.some((x) => metin.includes(x));
+    const basvurusu = (basv || []).find((x) => ayni(x.ad, t.ad));
     let govde;
-    if (var_('başvur', 'şoför ol', 'evrak', 'belge', 'ehliyet', 'adli sicil', 'ekranım kapalı', 'onay')) {
-      const b = (basv || []).find((x) => ayni(x.ad, t.ad));
+    if (var_('başvur', 'şoför ol', 'evrak', 'belge', 'ehliyet', 'adli sicil', 'ekranım kapalı', 'onay') || (basvurusu && !var_('ödeme', 'iptal', 'gecik'))) {
+      const b = basvurusu;
       if (b) {
-        const eksik = [!b.src ? 'SRC belgesi' : '', !b.psiko ? 'psikoteknik belgesi' : ''].filter(Boolean);
-        govde = 'Şoför başvurunuz #' + b.no + ' (' + b.tarih + ') sistemimizde kayıtlı ve şu an inceleme aşamasında.' +
-          (eksik.length ? ' Başvurunuzda ' + eksik.join(' ve ') + ' görünmüyor; ekleyebilirseniz değerlendirmeyi hızlandırırız.' : ' Belgeleriniz eksiksiz görünüyor.') +
-          ' İnceleme tamamlanınca hesabınız açılacak ve size bilgi vereceğiz.';
+        // SRC/psikoteknik başvuruda istenmiyor; görüşmeden sonra, işe başlamadan önce isteniyor (kullanıcı, 2026-11-19)
+        govde = 'Şoför başvurunuz #' + b.no + ' (' + b.tarih + ') sistemimizde kayıtlı ve şu an inceleme aşamasında. ' +
+          'İncelemenin ardından sizinle görüşeceğiz; görüşmeden sonra, çalışmaya başlamadan önce SRC ve psikoteknik belgelerinizi de isteyeceğiz.' +
+          ((b.src && b.psiko) ? '' : ' Hazırlamaya şimdiden başlarsanız süreç hızlanır.');
       } else {
         govde = 'Şoför başvurunuzla ilgili kontrol yaptık ancak başvuruyu bekleyenler arasında göremedik. Uygulamadaki "Şoför Başvurusu" adımlarını tamamlayıp ehliyet ve adli sicil belgenizi yüklediğinizden emin olur musunuz? Tamamladıysanız başvuruda kullandığınız telefon numarasını yazmanız yeterli, hemen bakalım.';
       }
+    } else if (var_('kazanç', 'kazan', 'şoför olsa', 'şoför olmak', 'şöför olsa', 'çalışmak ist', 'etkin mi', 'aktif mi', 'hangi şehir', 'bölge')) {
+      govde = 'İlginiz için teşekkür ederiz. Şoför olarak çalışmak için uygulamadaki şoför başvurusu adımını tamamlamanız yeterli. Başvurunuz incelendikten sonra ekibimiz çalışma bölgeleri ve kazanç detayları hakkında sizinle görüşecek. Çalışmaya başlamadan önce SRC ve psikoteknik belgesi gerekiyor; görüşmeden sonra bunları isteyeceğiz.';
+    } else if (var_('üyelik', 'üye ol', 'kayıt', 'tamamla', 'hesap aç', 'hesabımı aç')) {
+      govde = 'Üyeliğinizi tamamlamanıza yardımcı olalım. Hangi adımda takıldığınızı yazar mısınız? Uygulamayı yolcu olarak mı kullanmak istiyorsunuz, yoksa şoför olarak mı çalışmak istiyorsunuz? Buna göre size adım adım yol gösterelim.';
     } else if (var_('gecik', 'gelmedi', 'bekledim') && var_('iade', 'ücret', 'para')) {
       govde = 'Yaşadığınız gecikme için özür dileriz. Yolculuğun tarih ve saatini yazarsanız şoförümüzle görüşüp ücret iadesi talebinizi inceleyecek ve en kısa sürede size dönüş yapacağız.';
     } else if (var_('ödeme', 'ücret', 'para', 'iade', 'kart', 'iban', 'fatura', 'çekildi', 'tahsil')) {
       govde = 'Ödemenizle ilgili kontrol yapıyoruz. Ödemenin tarihini ve tutarını, varsa dekontunu yazarsanız konuyu hızlıca sonuçlandırırız.';
     } else if (var_('iptal')) {
       govde = 'İptal talebinizi aldık. Yolculuğun tarih ve saatini yazarsanız işlemi hemen yapıp size bilgi verelim.';
-    } else if (var_('gelmedi', 'gecik', 'bekledim', 'bekliyorum', 'nerede', 'ulaşamadım', 'şoför', 'yolculuk')) {
+    } else if (var_('gelmedi', 'gecik', 'bekledim', 'bekliyorum', 'nerede', 'ulaşamadım', 'kaba', 'şikayet')) {
       govde = 'Yaşadığınız durum için özür dileriz. Yolculuğun tarih ve saatini yazarsanız şoförümüzle görüşüp en kısa sürede size dönüş yapacağız.';
     } else if (var_('hata', 'açılmıyor', 'giriş', 'şifre', 'çalışmıyor', 'kod', 'sms', 'uygulama', 'teknik', 'donuyor')) {
       govde = 'Sorunu çözmek için uygulamayı güncelleyip yeniden açmayı deneyebilir misiniz? Devam ederse telefonunuzun modelini ve gördüğünüz hata mesajını (mümkünse ekran görüntüsüyle) yazarsanız hemen ilgileniriz.';
@@ -376,6 +383,10 @@
       govde = 'Hesabınızla ilgili talebinizi aldık. İşlemi güvenle yapabilmemiz için hesabınızda kayıtlı telefon numarasını yazar mısınız?';
     } else if (var_('teşekkür', 'sağol', 'tamam', 'eyvallah')) {
       govde = 'Rica ederiz, iyi yolculuklar dileriz.';
+    } else if (konu.includes('teknik')) {
+      govde = 'Yaşadığınız teknik sorunu çözmek için biraz daha bilgiye ihtiyacımız var: hangi ekranda ne oluyor, telefonunuzun modeli nedir? Mümkünse ekran görüntüsü de ekleyebilirsiniz.';
+    } else if (konu.includes('yolculuk')) {
+      govde = 'Yolculuğunuzla ilgili mesajınızı aldık. Yolculuğun tarih ve saatini yazarsanız hemen inceleyip size dönüş yapalım.';
     } else {
       govde = 'Mesajınız için teşekkür ederiz. Konuyu inceleyip en kısa sürede size dönüş yapacağız.';
     }
