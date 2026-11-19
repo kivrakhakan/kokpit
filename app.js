@@ -244,7 +244,7 @@
         const son = (t.mesajlar || []).filter((m) => m.kim === 'kisi').slice(-1)[0];
         const gidiyor = S.komutlar.find((k) => k.tur === 'destek_cevap' && String(k.ilan_id) === String(t.id) && k.durum === 'bekliyor');
         h += '<div class="satir"><div class="ad tikla" data-destek="' + i + '">' + esc(t.ad || 'Kişi') + ' · ' + esc(t.konu) +
-          '<small>' + esc(son ? son.metin.slice(0, 70) : '') + ' · ' + esc(t.son_hareket || '') + '</small></div>' +
+          '<small>' + esc(kimlik(t, basv).yazi) + ' · ' + esc(son ? son.metin.slice(0, 70) : '') + ' · ' + esc(t.son_hareket || '') + '</small></div>' +
           (gidiyor ? '<span class="rozet r-gri">gönderiliyor…</span>' : '<button class="atabtn" data-destek="' + i + '">Yanıtla</button>') + '</div>';
       });
       h += '</div>';
@@ -433,6 +433,15 @@
   const kucuk = (s) => String(s || '').toLocaleLowerCase('tr-TR');
   const ayni = (a, b) => kucuk(a).replace(/\s+/g, ' ').trim() === kucuk(b).replace(/\s+/g, ' ').trim();
   // Kural tabanlı öneri: konu + mesajdaki kelimeler + kendi verimiz (başvuru listesi). Yapay zekâ değil, ücretsiz.
+  // Destek talebindeki kişi kim? Kabul edilmiş şoför (eklenti telefonla eşleştirir, t.sofor_no) / aday (bekleyen başvuru) / üye
+  const tel10 = (s) => (String(s || '').replace(/\D/g, '').match(/5\d{9}$/) || [''])[0];
+  function kimlik(t, basv) {
+    const b = (basv || []).find((x) => ayni(x.ad, t.ad) || (t.tel && tel10(x.telefon) === t.tel));
+    if (t.sofor_no) return { tur: 'sofor', b: b, yazi: '✅ Kabul edilmiş şoför #' + t.sofor_no };
+    if (b) return { tur: 'aday', b: b, yazi: '🕓 Aday · başvuru #' + b.no + ' incelemede' };
+    if (t.sofor_no == null) return { tur: '?', b: null, yazi: '❔ Şoför mü bilinmiyor' };
+    return { tur: 'uye', b: null, yazi: '👤 Üye · şoför değil, bekleyen başvurusu yok' };
+  }
   function yanitOner(t, basv) {
     const ad = String(t.ad || '').split(' ')[0];
     const kisi = (t.mesajlar || []).filter((m) => m.kim === 'kisi');
@@ -441,14 +450,20 @@
     const konu = kucuk(t.konu);
     const sonKisa = kisi.length > 1 && /^[\s?.!]+$/.test(kisi[kisi.length - 1].metin);   // "?", "?????" gibi hatırlatma
     const var_ = (...k) => k.some((x) => metin.includes(x));
-    const basvurusu = (basv || []).find((x) => ayni(x.ad, t.ad));
+    const kim = kimlik(t, basv);
+    const basvurusu = kim.b;
     let govde;
     const belgeKonusu = var_('src', 'psikotek', 'psiko tek');
     const belgeHazir = belgeKonusu && !var_('yok', 'var mı', 'var mi', 'şart mı', 'gerekli mi', 'zorunlu mu') &&
       (var_('hazır', 'aldım', 'tamamladım', 'yükled', 'elimde', 'mevcut') || /\bvar\b/.test(metin));
-    if (belgeHazir) {
-      // Belgesi hazır diyen → uygulamadan kendisi yüklesin (kullanıcı, 2026-11-19)
-      govde = 'Teşekkürler! Uygulamada Profil > Belgelerim bölümünden SRC, psikoteknik belgenizi ve profil fotoğrafınızı yükleyin. Profil > Kişisel Bilgiler\'in en altındaki "Kendimi tanıtıyorum" alanını da doldurun. Ardından kontrol edip dönüş yapacağız.' +
+    if (belgeHazir && kim.tur === 'aday') {
+      // Kabul edilmeden "belgem hazır" diyen aday → önce başvurunun sonuçlanması beklenir (kullanıcı, 2026-11-19)
+      govde = 'Teşekkürler! Başvurunuz #' + basvurusu.no + ' şu an inceleme aşamasında. Başvurunuz kabul edildikten sonra SRC, psikoteknik belgenizi ve profil fotoğrafınızı uygulamadan nasıl yükleyeceğinizi size ileteceğiz.';
+    } else if (belgeHazir && kim.tur === 'uye') {
+      govde = 'Teşekkürler! Belgeleri yükleyebilmek için önce uygulamadan şoför başvurusu yapmanız gerekiyor. Başvurunuz kabul edildikten sonra SRC, psikoteknik belgenizi ve profil fotoğrafınızı yükleyebileceksiniz.';
+    } else if (belgeHazir) {
+      // Kabul edilmiş şoför (ya da bilinmiyor) → uygulamadan kendisi yüklesin (kullanıcı, 2026-11-19)
+      govde ='Teşekkürler! Uygulamada Profil > Belgelerim bölümünden SRC, psikoteknik belgenizi ve profil fotoğrafınızı yükleyin. Profil > Kişisel Bilgiler\'in en altındaki "Kendimi tanıtıyorum" alanını da doldurun. Ardından kontrol edip dönüş yapacağız.' +
         (basvurusu ? ' Başvurunuz #' + basvurusu.no + ' sistemimizde kayıtlı.' : '');
     } else if (belgeKonusu) {
       // "SRC/psikoteknik şart mı?" → şart (kullanıcı, 2026-11-19); başvuru için değil, işe başlamak için
@@ -494,7 +509,7 @@
     return 'Merhaba' + (ad ? ' ' + ad : '') + ',\n' + (sonKisa ? 'Geç dönüş için kusura bakmayın. ' : '') + govde + '\n\nŞoför Bey Destek Ekibi';
   }
   function destekAc(t, basv) {
-    let h = '<h3>💬 ' + esc(t.ad || 'Kişi') + '</h3><div class="alt">' + esc(t.konu) + ' · #' + esc(t.id) + ' · ' + (t.tip === 'sofor' ? 'Şoför' : 'Üye') + '</div>';
+    let h = '<h3>💬 ' + esc(t.ad || 'Kişi') + '</h3><div class="alt">' + esc(t.konu) + ' · #' + esc(t.id) + '</div><div class="alt"><b>' + esc(kimlik(t, basv).yazi) + '</b></div>';
     h += '<div class="sohbet">' + (t.mesajlar || []).map((m) => '<div class="balon ' + (m.kim === 'destek' ? 'biz' : 'o') + '">' + esc(m.metin) + '<small>' + esc(m.zaman) + '</small></div>').join('') + '</div>';
     h += '<div class="basv-gun">Önerilen yanıt (düzeltebilirsin)</div><textarea id="destekMetin" rows="7" maxlength="3000"></textarea>' +
       '<div class="ikili" style="margin-top:8px"><a class="btn" style="text-align:center;text-decoration:none" href="' + ADMIN + 'admin/destek-talepleri/' + encodeURIComponent(t.tip) + '/' + encodeURIComponent(t.id) + '" target="_blank" rel="noopener">Admin\'de aç</a>' +
