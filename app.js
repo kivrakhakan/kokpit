@@ -443,7 +443,13 @@
     const var_ = (...k) => k.some((x) => metin.includes(x));
     const basvurusu = (basv || []).find((x) => ayni(x.ad, t.ad));
     let govde;
-    if (var_('başvur', 'şoför ol', 'evrak', 'belge', 'ehliyet', 'adli sicil', 'ekranım kapalı', 'onay') || (basvurusu && !var_('ödeme', 'iptal', 'gecik'))) {
+    if (var_('src', 'psikotek', 'psiko tek')) {
+      // "SRC/psikoteknik şart mı?" → şart (kullanıcı, 2026-11-19); başvuru için değil, işe başlamak için
+      govde = 'Evet, SRC ve psikoteknik belgesi bizimle şoför olarak çalışabilmek için şarttır; bu belgeler olmadan çalışmaya başlamak mümkün değil. ' +
+        'Başvurunuzu belgeler henüz yokken de yapabilirsiniz; başvurunuz incelenir ve sizinle görüşülür. Ancak işe başlamadan önce SRC ve psikoteknik belgelerinizi tamamlamanız gerekiyor. ' +
+        'SRC belgesi sürücü kursları üzerinden, psikoteknik belgesi ise yetkili psikoteknik merkezlerinden alınabiliyor.' +
+        (basvurusu ? ' Başvurunuz #' + basvurusu.no + ' sistemimizde kayıtlı ve inceleme aşamasında.' : '');
+    } else if (var_('başvur', 'şoför ol', 'evrak', 'belge', 'ehliyet', 'adli sicil', 'ekranım kapalı', 'onay') || (basvurusu && !var_('ödeme', 'iptal', 'gecik'))) {
       const b = basvurusu;
       if (b) {
         // SRC/psikoteknik başvuruda istenmiyor; görüşmeden sonra, işe başlamadan önce isteniyor (kullanıcı, 2026-11-19)
