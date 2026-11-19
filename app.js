@@ -181,6 +181,15 @@
       '<div class="sayi"><b style="color:' + (odSayi ? 'var(--sari)' : 'var(--yazi)') + '">' + odSayi + '</b><span>Bekleyen ödeme</span></div>' +
       '<div class="sayi"><b style="color:' + (musait.length ? 'var(--yesil)' : 'var(--kirmizi)') + '">' + musait.length + '</b><span>Müsait şoför</span></div></div>';
 
+    // Harita (talepler + şoförler). Harita bir kez kurulur, her çizimde yerine taşınır (yeniden yüklenmesin)
+    if (window.L) {
+      h += '<div class="kart"><h2>Harita <span>' + talepler.filter((t) => t.nereden && sayiMi(t.nereden.enlem)).length + ' talep · ' +
+        soforler.filter((s) => sayiMi(s.enlem)).length + ' şoför</span></h2><div id="haritaYer"></div>' +
+        '<div class="hr-lejant"><span><i style="background:var(--kirmizi)"></i>ACİL</span><span><i style="background:var(--turuncu)"></i>alarm</span>' +
+        '<span><i style="background:var(--sari)"></i>uyarı</span><span><i style="background:#fff;border:2px solid var(--yesil)"></i>müsait şoför</span>' +
+        '<span><i style="background:#fff;border:2px solid var(--sari)"></i>meşgul</span><span>kesik çizgi = eski konum</span></div></div>';
+    }
+
     // Talepler
     h += '<div class="kart"><h2>Atama bekleyen talepler <span>' + e.soft + ' · ' + e.alarm + ' · ' + e.acil + ' dk</span></h2>';
     if (!talepler.length) h += '<div class="bos">Bekleyen talep yok.</div>';
@@ -275,7 +284,9 @@
       h += '</div>';
     }
 
+    const eskiHarita = S.haritaEl && S.haritaEl.parentNode ? S.haritaEl.parentNode.removeChild(S.haritaEl) : S.haritaEl;
     $('uygulama').innerHTML = h;
+    if (window.L && $('haritaYer')) haritaCiz(talepler, soforler, e, eskiHarita, musait);
     document.querySelectorAll('[data-kom]').forEach((b) => { b.onclick = () => komutGonder({ tur: b.dataset.kom }, b); });
     document.querySelectorAll('[data-ata]').forEach((b) => { b.onclick = () => ataAc(talepler[+b.dataset.ata]); });
     document.querySelectorAll('[data-detay]').forEach((b) => { b.onclick = () => talepDetay(talepler[+b.dataset.detay], musait); });
@@ -339,6 +350,48 @@
       (sayiMi(s.enlem) ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + harita(s) + '" target="_blank" rel="noopener">📍 Haritada aç</a>' : '<span></span>') +
       (s.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">📞 Ara</a>' : '<span></span>') + '</div>';
     pencere(h);
+  }
+
+  /* ---------------- harita ---------------- */
+  function haritaCiz(talepler, soforler, e, el, musait) {
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'harita';
+      S.haritaEl = el;
+    }
+    $('haritaYer').appendChild(el);
+    if (!S.harita) {
+      S.harita = L.map(el, { zoomControl: true, attributionControl: true }).setView([37.86, 27.26], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(S.harita);
+      S.haritaKatman = L.layerGroup().addTo(S.harita);
+    }
+    setTimeout(() => S.harita.invalidateSize(), 0);
+    const kat = S.haritaKatman;
+    kat.clearLayers();
+    const noktalar = [];
+    soforler.filter((s) => sayiMi(s.enlem) && sayiMi(s.boylam)).forEach((s) => {
+      const eski = !s.konum_ms || Date.now() - s.konum_ms > 30 * 60000;
+      const renk = s.durum === 'Müsait' ? '#2ecc71' : s.durum === 'Meşgul' ? '#f5b041' : '#8a90a0';
+      const m = L.circleMarker([+s.enlem, +s.boylam], { radius: 8, color: renk, weight: 3, fillColor: '#fff', fillOpacity: eski ? 0.35 : 1, opacity: eski ? 0.6 : 1, dashArray: eski ? '3 3' : null })
+        .bindPopup('<b>' + esc(s.ad) + '</b><br>' + esc(s.durum || '') + (s.konum_ms ? '<br>konum ' + sure(Date.now() - s.konum_ms) + ' önce' : ''));
+      kat.addLayer(m);
+      noktalar.push([+s.enlem, +s.boylam]);
+    });
+    talepler.filter((t) => !t.sessiz && t.nereden && sayiMi(t.nereden.enlem) && sayiMi(t.nereden.boylam)).forEach((t) => {
+      const sv = seviye(t.yasDk, e);
+      const renk = { acil: '#ff4757', alarm: '#ff7a2f', uyari: '#f5b041', ok: '#2ecc71' }[sv[0]];
+      const m = L.circleMarker([+t.nereden.enlem, +t.nereden.boylam], { radius: 11, color: '#111', weight: 2, fillColor: renk, fillOpacity: 0.95 })
+        .bindTooltip(esc(yerYaz(t.nereden)) + ' · ' + Math.floor(t.yasDk) + ' dk', { direction: 'top' });
+      m.on('click', () => talepDetay(t, musait));
+      kat.addLayer(m);
+      noktalar.push([+t.nereden.enlem, +t.nereden.boylam]);
+    });
+    // İlk açılışta (ya da nokta sayısı değişince) tümünü sığdır; kullanıcı yakınlaştırdıysa bozma
+    const imza = noktalar.length;
+    if (noktalar.length && S.haritaImza !== imza) {
+      S.haritaImza = imza;
+      S.harita.fitBounds(noktalar, { padding: [30, 30], maxZoom: 13 });
+    }
   }
 
   /* ---------------- destek talepleri: yanıt önerisi ---------------- */

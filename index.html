@@ -51,6 +51,11 @@ header h1{font-size:16px;margin:0}header small{color:var(--soluk);display:block;
 .soluk{opacity:.45}
 .tikla{cursor:pointer}
 .basv-ust{font-size:14px;margin-top:2px}
+#harita{height:280px;border-radius:10px;overflow:hidden;background:#1b1f27}
+.leaflet-container{font:inherit}
+.leaflet-popup-content{margin:10px 12px;font-size:13px;color:#111}
+.hr-lejant{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--soluk);margin-top:6px}
+.hr-lejant i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
 .sohbet{display:flex;flex-direction:column;gap:6px;margin:6px 0 4px;max-height:38vh;overflow:auto}
 .balon{max-width:85%;padding:8px 10px;border-radius:12px;font-size:14px;white-space:pre-wrap;word-break:break-word}
 .balon small{display:block;font-size:11px;color:var(--soluk);margin-top:3px}
@@ -95,6 +100,8 @@ input{width:100%;padding:13px 12px;border-radius:10px;border:1px solid var(--ciz
 <body>
 <div id="uygulama"></div>
 <div id="bildirim" class="bildirim"></div>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
