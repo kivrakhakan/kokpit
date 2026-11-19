@@ -184,6 +184,16 @@
       '<div class="sayi"><b style="color:' + (aktif.length ? 'var(--kirmizi)' : 'var(--yazi)') + '">' + aktif.length + '</b><span>Bekleyen talep</span></div>' +
       '<div class="sayi"><b style="color:' + (odSayi ? 'var(--sari)' : 'var(--yazi)') + '">' + odSayi + '</b><span>Bekleyen ödeme</span></div>' +
       '<div class="sayi"><b style="color:' + (musait.length ? 'var(--yesil)' : 'var(--kirmizi)') + '">' + musait.length + '</b><span>Müsait şoför</span></div></div>';
+    // Aktif şoförler (müsait + meşgul) Özet'te de görünsün (kullanıcı isteği 2026-11-20)
+    const aktifSf = soforler.filter((s) => s.durum === 'Müsait' || s.durum === 'Meşgul').sort((a, b) => (a.durum === 'Müsait' ? 0 : 1) - (b.durum === 'Müsait' ? 0 : 1));
+    h += '<div class="kart"><h2>Aktif şoförler <span>' + musait.length + ' müsait · ' + (aktifSf.length - musait.length) + ' meşgul</span></h2>';
+    if (!aktifSf.length) h += '<div class="bos">Şu an aktif şoför yok.</div>';
+    aktifSf.forEach((s) => {
+      h += '<div class="sf"><span class="nokta" style="background:' + (s.durum === 'Müsait' ? 'var(--yesil)' : 'var(--sari)') + '"></span><div class="ad">' + esc(s.ad) +
+        '<small>' + esc(s.durum) + (s.konum_ms ? ' · konum ' + sure(now - s.konum_ms) + ' önce' : '') + '</small></div>' +
+        (s.telefon ? '<a class="tel" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">Ara</a>' : '') + '</div>';
+    });
+    h += '</div>';
 
     // Harita (talepler + şoförler). Harita bir kez kurulur, her çizimde yerine taşınır (yeniden yüklenmesin)
     h += '§harita§';
