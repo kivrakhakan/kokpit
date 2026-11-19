@@ -439,6 +439,7 @@
     const b = (basv || []).find((x) => ayni(x.ad, t.ad) || (t.tel && tel10(x.telefon) === t.tel));
     if (t.sofor_no) return { tur: 'sofor', b: b, yazi: '✅ Kabul edilmiş şoför #' + t.sofor_no };
     if (b) return { tur: 'aday', b: b, yazi: '🕓 Aday · başvuru #' + b.no + ' incelemede' };
+    if (t.red) return { tur: 'red', b: null, yazi: '⛔ ' + (/Çıkar/i.test(t.red.durum) ? 'Şoförlükten çıkarıldı' : 'Başvurusu reddedildi') + ' · başvuru #' + t.red.no };
     if (t.sofor_no == null) return { tur: '?', b: null, yazi: '❔ Şoför mü bilinmiyor' };
     return { tur: 'uye', b: null, yazi: '👤 Üye · şoför değil, bekleyen başvurusu yok' };
   }
@@ -459,6 +460,9 @@
     if (belgeHazir && kim.tur === 'aday') {
       // Kabul edilmeden "belgem hazır" diyen aday → önce başvurunun sonuçlanması beklenir (kullanıcı, 2026-11-19)
       govde = 'Teşekkürler! Başvurunuz #' + basvurusu.no + ' şu an inceleme aşamasında. Başvurunuz kabul edildikten sonra SRC, psikoteknik belgenizi ve profil fotoğrafınızı uygulamadan nasıl yükleyeceğinizi size ileteceğiz.';
+    } else if (belgeHazir && kim.tur === 'red') {
+      // Reddedilmiş/çıkarılmış kişiye yükleme talimatı verilmez; nötr cevap, kararı ekip verir
+      govde = 'Mesajınız için teşekkürler. Başvurunuzun durumunu kontrol edip size dönüş yapacağız.';
     } else if (belgeHazir && kim.tur === 'uye') {
       govde = 'Teşekkürler! Belgeleri yükleyebilmek için önce uygulamadan şoför başvurusu yapmanız gerekiyor. Başvurunuz kabul edildikten sonra SRC, psikoteknik belgenizi ve profil fotoğrafınızı yükleyebileceksiniz.';
     } else if (belgeHazir) {
