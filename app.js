@@ -443,7 +443,14 @@
     const var_ = (...k) => k.some((x) => metin.includes(x));
     const basvurusu = (basv || []).find((x) => ayni(x.ad, t.ad));
     let govde;
-    if (var_('src', 'psikotek', 'psiko tek')) {
+    const belgeKonusu = var_('src', 'psikotek', 'psiko tek');
+    const belgeHazir = belgeKonusu && !var_('yok', 'var mı', 'var mi', 'şart mı', 'gerekli mi', 'zorunlu mu') &&
+      (var_('hazır', 'aldım', 'tamamladım', 'yükled', 'elimde', 'mevcut') || /\bvar\b/.test(metin));
+    if (belgeHazir) {
+      // Belgesi hazır diyen → uygulamadan kendisi yüklesin (kullanıcı, 2026-11-19)
+      govde = 'Teşekkürler! Uygulamada Profil > Belgelerim bölümünden SRC, psikoteknik belgenizi ve profil fotoğrafınızı yükleyin. Profil > Kişisel Bilgiler\'in en altındaki "Kendimi tanıtıyorum" alanını da doldurun. Ardından kontrol edip dönüş yapacağız.' +
+        (basvurusu ? ' Başvurunuz #' + basvurusu.no + ' sistemimizde kayıtlı.' : '');
+    } else if (belgeKonusu) {
       // "SRC/psikoteknik şart mı?" → şart (kullanıcı, 2026-11-19); başvuru için değil, işe başlamak için
       govde = 'Evet, SRC ve psikoteknik belgesi bizimle şoför olarak çalışabilmek için şarttır; bu belgeler olmadan çalışmaya başlamak mümkün değil. ' +
         'Başvurunuzu belgeler henüz yokken de yapabilirsiniz; başvurunuz incelenir ve sizinle görüşülür. Ancak işe başlamadan önce SRC ve psikoteknik belgelerinizi tamamlamanız gerekiyor. ' +
