@@ -457,7 +457,18 @@
     const belgeKonusu = var_('src', 'psikotek', 'psiko tek');
     const belgeHazir = belgeKonusu && !var_('yok', 'var mı', 'var mi', 'şart mı', 'gerekli mi', 'zorunlu mu') &&
       (var_('hazır', 'aldım', 'tamamladım', 'yükled', 'elimde', 'mevcut') || /\bvar\b/.test(metin));
-    if (belgeHazir && kim.tur === 'aday') {
+    // Son mesaj yalnızca teşekkürse (soru yok, kısa) eski mesajlara bakmadan kısa karşılık (kullanıcı, 2026-11-19: başvurusu olana inceleme mesajı gidiyordu)
+    const sonMesaj = kucuk(kisi.length ? kisi[kisi.length - 1].metin : '');
+    const tesekkurKalip = /teşekkür\w*|tesekkur\w*|sağ ?ol\w*|sagol\w*|eyvallah|allah razı olsun|eline sağlık/g;
+    // Teşekkür ve nezaket sözcükleri çıkınca geriye anlamlı söz kalmamalı ("başvurdum ekranım kapalı teşekkürler" teşekkür sayılmaz)
+    const kalan = sonMesaj.replace(tesekkurKalip, ' ').replace(/[^a-zçğıöşü\s]/g, ' ').split(/\s+/)
+      .filter((w) => w && !['ederim', 'ederiz', 'çok', 'cok', 'size', 'siz', 'sizlere', 'de', 'da', 'abi', 'hocam', 'kardeşim', 'iyi', 'günler', 'akşamlar', 'çalışmalar', 'geceler', 'tamam', 'tamamdır', 'peki', 'ok', 'okey', 'anladım', 'anlaşıldı', 'bilgi', 'bilgilendirme', 'için', 'ilginiz', 'ilginize', 'yardımınız', 'merhaba', 'selam', 'hayırlı', 'olsun', 'kolay', 'gelsin', 'rica'].includes(w));
+    const sadeceTesekkur = tesekkurKalip.test(sonMesaj) && !sonMesaj.includes('?') && kalan.length <= 1;
+    if (sadeceTesekkur && kim.tur === 'aday') {
+      return '';   // Teşekkür eden adaya cevap yazılmaz (kullanıcı, 2026-11-19)
+    } else if (sadeceTesekkur) {
+      govde = 'Rica ederiz, ' + ((kim.tur === 'sofor' || kim.tur === 'aday') ? 'iyi çalışmalar dileriz.' : 'iyi yolculuklar dileriz.');
+    } else if (belgeHazir && kim.tur === 'aday') {
       // Kabul edilmeden "belgem hazır" diyen aday → önce başvurunun sonuçlanması beklenir (kullanıcı, 2026-11-19)
       govde = 'Teşekkürler! Başvurunuz #' + basvurusu.no + ' şu an inceleme aşamasında. Başvurunuz kabul edildikten sonra SRC, psikoteknik belgenizi ve profil fotoğrafınızı uygulamadan nasıl yükleyeceğinizi size ileteceğiz.';
     } else if (belgeHazir && kim.tur === 'red') {
@@ -522,6 +533,7 @@
       '<button class="btn yesil" id="destekGonder">Gönder</button></div><p class="alt" style="margin-top:8px">Cevabı açık olan bilgisayardaki eklenti gönderir; birkaç saniye sürer.</p>';
     pencere(h);
     $('destekMetin').value = yanitOner(t, basv);
+    if (!$('destekMetin').value) $('destekMetin').placeholder = 'Aday yalnızca teşekkür etmiş, cevap gerekmiyor.';
     $('destekGonder').onclick = () => {
       const m = $('destekMetin').value.trim();
       if (!m) { bildir('Yanıt boş olamaz'); return; }
