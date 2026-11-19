@@ -169,7 +169,8 @@
     if (aktif.length && !musait.length) yap.push(['⚠', 'Müsait şoför yok; şoförleri arayın', 'admin/soforler']);
     if (+say.incelenen_sos > 0) yap.push(['🔎', say.incelenen_sos + ' SOS incelemede', 'admin/operasyon-merkezi']);
     const basv = Array.isArray(d.basvurular) ? d.basvurular : [];
-    const destek = Array.isArray(d.destek) ? d.destek : [];
+    // "Cevap gerekmiyor" işaretlenenler kişi yeniden yazana kadar gizli (anahtar son mesaja bağlı)
+    const destek = (Array.isArray(d.destek) ? d.destek : []).filter((t) => !S.tikler[destekAnahtar(t)]);
     if (destek.length) yap.push(['💬', destek.length + ' destek talebi cevap bekliyor', '#destek']);
     if (S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1) yap.unshift(['📊', 'Haftalık karne hazır: okuyup "Okudum" de', '#karne']);
     const bakilmamis = basv.filter((b) => !S.tikler[String(b.no)]).length;
@@ -525,15 +526,27 @@
     const ilkCevap = !(t.mesajlar || []).some((m) => m.kim === 'destek');
     return (ilkCevap ? 'Merhaba' + (ad ? ' ' + ad : '') + ',\n' : '') + (sonKisa ? 'Geç dönüş için kusura bakmayın. ' : '') + govde + '\n\nŞoför Bey Destek Ekibi';
   }
+  // Kişinin son mesajına bağlı anahtar: yeniden yazınca anahtar değişir, talep tekrar görünür (basvuru_takip tablosunda, ekip ortak)
+  function destekAnahtar(t) {
+    const son = (t.mesajlar || []).filter((m) => m.kim === 'kisi').slice(-1)[0] || {};
+    return 'd:' + t.tip + ':' + t.id + ':' + (son.zaman || '') + ':' + String(son.metin || '').length;
+  }
   function destekAc(t, basv) {
     let h = '<h3>💬 ' + esc(t.ad || 'Kişi') + '</h3><div class="alt">' + esc(t.konu) + ' · #' + esc(t.id) + '</div><div class="alt"><b>' + esc(kimlik(t, basv).yazi) + '</b></div>';
     h += '<div class="sohbet">' + (t.mesajlar || []).map((m) => '<div class="balon ' + (m.kim === 'destek' ? 'biz' : 'o') + '">' + esc(m.metin) + '<small>' + esc(m.zaman) + '</small></div>').join('') + '</div>';
     h += '<div class="basv-gun">Önerilen yanıt (düzeltebilirsin)</div><textarea id="destekMetin" rows="7" maxlength="3000"></textarea>' +
       '<div class="ikili" style="margin-top:8px"><a class="btn" style="text-align:center;text-decoration:none" href="' + ADMIN + 'admin/destek-talepleri/' + encodeURIComponent(t.tip) + '/' + encodeURIComponent(t.id) + '" target="_blank" rel="noopener">Admin\'de aç</a>' +
-      '<button class="btn yesil" id="destekGonder">Gönder</button></div><p class="alt" style="margin-top:8px">Cevabı açık olan bilgisayardaki eklenti gönderir; birkaç saniye sürer.</p>';
+      '<button class="btn yesil" id="destekGonder">Gönder</button></div>' +
+      '<label class="alt" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="destekGerekmez"> Cevap gerekmiyor (tekrar yazana kadar gizle)</label>' +
+      '<p class="alt" style="margin-top:8px">Cevabı açık olan bilgisayardaki eklenti gönderir; birkaç saniye sürer.</p>';
     pencere(h);
     $('destekMetin').value = yanitOner(t, basv);
-    if (!$('destekMetin').value) $('destekMetin').placeholder = 'Aday yalnızca teşekkür etmiş, cevap gerekmiyor.';
+    if (!$('destekMetin').value) $('destekMetin').placeholder = 'Aday yalnızca teşekkür etmiş, cevap gerekmiyor. Aşağıdaki kutucuğu işaretleyebilirsin.';
+    $('destekGerekmez').onchange = async (e) => {
+      if (!e.target.checked) return;
+      await tikle({ no: destekAnahtar(t), ad: t.ad || 'Talep' }, e.target);
+      const p = $('detayPerde'); if (p) p.remove();
+    };
     $('destekGonder').onclick = () => {
       const m = $('destekMetin').value.trim();
       if (!m) { bildir('Yanıt boş olamaz'); return; }
