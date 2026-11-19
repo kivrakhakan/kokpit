@@ -292,11 +292,6 @@
 
     // Son işlemler (özet sekmesinde)
     h += '§ozet§';
-    // Gün sonu özeti: eklenti her gün özet saatinde üretir (Telegram'a gitmez, yalnızca burada)
-    if (d.gunsonu && d.gunsonu.metin) {
-      h += '<div class="kart"><h2>📊 Gün sonu özeti <span>' + esc(d.gunsonu.tarih || '') + '</span></h2>' +
-        '<div class="kom" style="white-space:pre-line">' + esc(d.gunsonu.metin) + '</div></div>';
-    }
     const son = S.komutlar.slice(0, 6);
     if (son.length) {
       h += '<div class="kart"><h2>Son işlemler</h2>';
@@ -309,7 +304,13 @@
     }
 
     // Karne sekmesi
-    h += '§karne§' + '<div class="kart">' + karneIcerik() + '</div>';
+    h += '§karne§';
+    // Gün sonu özeti (karne sekmesinde, haftalık karnenin üstünde): eklenti her gün özet saatinde üretir
+    if (d.gunsonu && d.gunsonu.metin) {
+      h += '<div class="kart"><h2>📊 Gün sonu özeti <span>' + esc(d.gunsonu.tarih || '') + '</span></h2>' +
+        '<div class="kom" style="white-space:pre-line">' + esc(d.gunsonu.metin) + '</div></div>';
+    }
+    h += '<div class="kart">' + karneIcerik() + '</div>';
 
     // Yalnızca açık sekmeyi göster; alt menü
     const B = S.sekme || 'ozet';
@@ -875,7 +876,7 @@
         saatler: [1, 0, 0, 0, 0, 1, 2, 4, 5, 3, 2, 2, 3, 2, 2, 3, 4, 3, 2, 2, 1, 1, 1, 1],
         ilceler: [{ ad: 'Kuşadası', n: 21 }, { ad: 'Selçuk', n: 9 }, { ad: 'Davutlar', n: 6 }],
         gordum: [{ kim: 'Burhan', n: 7 }, { kim: 'Cio', n: 4 }], basvuru_tik: [{ kim: 'Cio', n: 12 }], panel_atama: [{ kim: 'Burhan', n: 3 }],
-        destek: { talep: 9, mesaj: 14, cevap: 11, cevaplayan: [{ kim: 'Hakan - Admin', n: 8 }, { kim: 'Cio', n: 3 }] } } };
+        destek: { talep: 9, mesaj: 14, cevap: 11, cevaplayan: [{ kim: 'Hakan', n: 8 }, { kim: 'Cio', n: 3 }] } } };
     ciz();
     setInterval(ciz, 15000);
   }
