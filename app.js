@@ -9,7 +9,8 @@
   const DEMO = /[?&]demo=1/.test(location.search);
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const S = { db: null, kul: null, ekip: null, durum: null, guncelleme: 0, komutlar: [], tikler: {}, ata: null, secili: null, tumu: false };
+  const S = { db: null, kul: null, ekip: null, durum: null, guncelleme: 0, komutlar: [], tikler: {}, ata: null, secili: null, tumu: false, sekme: 'ozet' };
+  try { S.sekme = localStorage.getItem('sb_sekme') || 'ozet'; } catch (e) { /* önemsiz */ }
 
   /* ---------------- yardımcılar ---------------- */
   const trSaat = (ms) => new Date(ms).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' });
@@ -138,6 +139,8 @@
     if (!bayat && d.sayfa === 'logout') h += '<div class="serit kirmizi">⚠ Bilgisayardaki panel oturumu kapanmış, tekrar giriş yapılmalı.</div>';
     else if (!bayat && d.sayfa && d.sayfa !== 'atama') h += '<div class="serit sari">Bilgisayarda Operasyon Merkezi sayfası açık değil; talepler izlenmiyor olabilir.</div>';
 
+    // Bölümler: §ad§ işaretinden sonrası o sekmeye ait; işaretten öncesi (başlık + uyarı şeritleri) her sekmede görünür
+    h += '§ozet§';
     // Ana durum kartı
     const enEski = aktif[0];
     const al = d.alarm || {};
@@ -170,10 +173,10 @@
     if (destek.length) yap.push(['💬', destek.length + ' destek talebi cevap bekliyor', '#destek']);
     if (S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1) yap.unshift(['📊', 'Haftalık karne hazır: okuyup "Okudum" de', '#karne']);
     const bakilmamis = basv.filter((b) => !S.tikler[String(b.no)]).length;
-    if (bakilmamis) yap.push(['🧑‍✈️', bakilmamis + ' şoför başvurusuna henüz bakılmadı', 'admin/sofor-basvurulari']);
+    if (bakilmamis) yap.push(['📝', bakilmamis + ' şoför başvurusuna henüz bakılmadı', 'admin/sofor-basvurulari']);
     if (yap.length) {
-      h += '<div class="kart"><h2>Kontrol et <span>admin panel</span></h2>' + yap.map((y) =>
-        (y[2] === '#karne' ? '<a class="satir yap" href="#" data-karne="1">' : y[2] === '#destek' ? '<a class="satir yap" href="#destekKart">' : '<a class="satir yap" href="' + ADMIN + y[2] + '" target="_blank" rel="noopener">') + '<span style="font-size:18px">' + y[0] + '</span><div class="ad">' + esc(y[1]) + '</div><span class="ok">›</span></a>').join('') + '</div>';
+      h += '<div class="kart"><h2>Kontrol et <span>' + yap.length + ' iş</span></h2>' + yap.map((y) =>
+        (y[2] === '#karne' ? '<a class="satir yap" href="#" data-sekme="karne">' : y[2] === '#destek' ? '<a class="satir yap" href="#" data-sekme="destek">' : '<a class="satir yap" href="' + ADMIN + y[2] + '" target="_blank" rel="noopener">') + '<span style="font-size:18px">' + y[0] + '</span><div class="ad">' + esc(y[1]) + '</div><span class="ok">›</span></a>').join('') + '</div>';
     }
 
     h += '<div class="sayilar">' +
@@ -182,6 +185,7 @@
       '<div class="sayi"><b style="color:' + (musait.length ? 'var(--yesil)' : 'var(--kirmizi)') + '">' + musait.length + '</b><span>Müsait şoför</span></div></div>';
 
     // Harita (talepler + şoförler). Harita bir kez kurulur, her çizimde yerine taşınır (yeniden yüklenmesin)
+    h += '§harita§';
     if (window.L) {
       h += '<div class="kart"><h2>Harita <span>' + talepler.filter((t) => t.nereden && sayiMi(t.nereden.enlem)).length + ' talep · ' +
         soforler.filter((s) => sayiMi(s.enlem)).length + ' şoför</span></h2><div id="haritaYer"></div>' +
@@ -191,6 +195,7 @@
     }
 
     // Talepler
+    h += '§talep§';
     h += '<div class="kart"><h2>Atama bekleyen talepler <span>' + e.soft + ' · ' + e.alarm + ' · ' + e.acil + ' dk</span></h2>';
     if (!talepler.length) h += '<div class="bos">Bekleyen talep yok.</div>';
     talepler.forEach((t, i) => {
@@ -231,6 +236,8 @@
     h += '</div>';
 
     // Destek talepleri (son mesajı kişinin yazdığı = cevap bekleyen)
+    h += '§destek§';
+    if (!destek.length && !basv.length) h += '<div class="kart"><div class="bos">Cevap bekleyen destek talebi ya da başvuru yok. 👍</div></div>';
     if (destek.length) {
       h += '<div class="kart" id="destekKart"><h2>Destek talepleri <span>' + destek.length + ' cevap bekliyor</span></h2>';
       destek.forEach((t, i) => {
@@ -272,7 +279,8 @@
       h += '</div>';
     }
 
-    // Son işlemler
+    // Son işlemler (özet sekmesinde)
+    h += '§ozet§';
     const son = S.komutlar.slice(0, 6);
     if (son.length) {
       h += '<div class="kart"><h2>Son işlemler</h2>';
@@ -284,8 +292,27 @@
       h += '</div>';
     }
 
+    // Karne sekmesi
+    h += '§karne§' + '<div class="kart">' + karneIcerik() + '</div>';
+
+    // Yalnızca açık sekmeyi göster; alt menü
+    const B = S.sekme || 'ozet';
+    const parca = h.split(/§(\w+)§/);
+    let goster = parca[0];
+    for (let i = 1; i < parca.length; i += 2) if (parca[i] === B) goster += parca[i + 1];
+    const kOkunmadi = S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1;
+    const sekmeler = [
+      ['ozet', '🏠', 'Özet', yap.length],
+      ['harita', '🗺️', 'Harita', 0],
+      ['talep', '🚗', 'Talepler', aktif.length],
+      ['destek', '💬', 'Destek', destek.length + bakilmamis],
+      ['karne', '📊', 'Karne', kOkunmadi ? '!' : 0]
+    ];
+    goster += '<nav class="altmenu">' + sekmeler.map((s) => '<button data-sekme="' + s[0] + '" class="' + (s[0] === B ? 'on' : '') + '"><span class="am-ik">' + s[1] +
+      (s[3] ? '<em>' + esc(s[3]) + '</em>' : '') + '</span>' + s[2] + '</button>').join('') + '</nav>';
+
     const eskiHarita = S.haritaEl && S.haritaEl.parentNode ? S.haritaEl.parentNode.removeChild(S.haritaEl) : S.haritaEl;
-    $('uygulama').innerHTML = h;
+    $('uygulama').innerHTML = goster;
     if (window.L && $('haritaYer')) haritaCiz(talepler, soforler, e, eskiHarita, musait);
     document.querySelectorAll('[data-kom]').forEach((b) => { b.onclick = () => komutGonder({ tur: b.dataset.kom }, b); });
     document.querySelectorAll('[data-ata]').forEach((b) => { b.onclick = () => ataAc(talepler[+b.dataset.ata]); });
@@ -297,8 +324,16 @@
     if ($('cikis')) $('cikis').onclick = async () => { await S.db.auth.signOut(); location.reload(); };
     if ($('bildirimAc')) $('bildirimAc').onclick = bildirimAc;
     if ($('bildAyar')) $('bildAyar').onclick = () => window.ReactNativeWebView.postMessage('bildirim-ayar');
-    document.querySelectorAll('[data-karne]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); karneAc(); }; });
+    document.querySelectorAll('[data-karne]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); sekmeAc('karne'); }; });
+    document.querySelectorAll('[data-sekme]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); sekmeAc(a.dataset.sekme); }; });
+    if (B === 'karne') karneBagla();
     if (S.ata) cizAta();
+  }
+  function sekmeAc(s) {
+    S.sekme = s;
+    try { localStorage.setItem('sb_sekme', s); } catch (e) { /* önemsiz */ }
+    ciz();
+    window.scrollTo(0, 0);
   }
 
   function oneri(t, musait) {
@@ -479,9 +514,11 @@
   function liste(a, bos) {
     return a && a.length ? a.map((x) => '<div class="kom"><b>' + esc(x.kim || x.ad) + '</b> · ' + x.n + '</div>').join('') : '<div class="bos">' + bos + '</div>';
   }
-  function karneAc() {
+  function karneAc() { sekmeAc('karne'); }
+  // Karnenin içeriği (Karne sekmesinde gösterilir); "Okudum" düğmesi karneBagla ile bağlanır
+  function karneIcerik() {
     const k = S.karne;
-    if (!k) { pencere('<h3>Haftalık karne</h3><div class="alt">Henüz karne yok. İlk karne, veriler biriktikten sonra pazartesi sabahı hazırlanır.</div>'); return; }
+    if (!k) return '<h3>📊 Haftalık karne</h3><div class="alt">Henüz karne yok. İlk karne, veriler biriktikten sonra pazartesi sabahı hazırlanır.</div>';
     const v = k.veri || {};
     const tarih = String(k.hafta).split('-').reverse().join('.');
     const fark = v.onceki_talep != null && v.onceki_talep > 0 ? Math.round(((v.talep - v.onceki_talep) / v.onceki_talep) * 100) : null;
@@ -506,7 +543,10 @@
         return '<div class="kom">' + (o ? '✅ <b>' + esc(a) + '</b> · ' + new Date(o.zaman).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '⏳ <b>' + esc(a) + '</b> · henüz okumadı') + '</div>';
       }).join('') +
       (okudum ? '<div class="serit" style="background:#0d2a1a;border:1px solid #1b4a2f;color:#8fe3b0;margin-top:12px">✅ Okudun, teşekkürler.</div>' : '<button class="btn yesil" id="okudum" style="margin-top:12px">Okudum ✓</button>');
-    pencere(h);
+    return h;
+  }
+  function karneBagla() {
+    const k = S.karne;
     if ($('okudum')) $('okudum').onclick = async () => {
       $('okudum').disabled = true;
       if (!DEMO) {
@@ -515,7 +555,7 @@
         await karneYukle();
       } else { k.okuyanlar.push(S.ekip.ad); k.okuma.push({ kim: S.ekip.ad, zaman: new Date().toISOString() }); }
       bildir('✅ Karne okundu olarak işaretlendi');
-      karneAc();
+      ciz();
     };
   }
 
