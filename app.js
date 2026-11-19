@@ -282,6 +282,11 @@
 
     // Son işlemler (özet sekmesinde)
     h += '§ozet§';
+    // Gün sonu özeti: eklenti her gün özet saatinde üretir (Telegram'a gitmez, yalnızca burada)
+    if (d.gunsonu && d.gunsonu.metin) {
+      h += '<div class="kart"><h2>📊 Gün sonu özeti <span>' + esc(d.gunsonu.tarih || '') + '</span></h2>' +
+        '<div class="kom" style="white-space:pre-line">' + esc(d.gunsonu.metin) + '</div></div>';
+    }
     const son = S.komutlar.slice(0, 6);
     if (son.length) {
       h += '<div class="kart"><h2>Son işlemler</h2>';
@@ -845,6 +850,7 @@
         { tip: 'uye', id: 12, ad: 'Ayşe Demo', konu: 'Yolculuk', son_hareket: '18.11.2026 21:05', mesajlar: [
           { kim: 'kisi', metin: 'Şoför 20 dakika gecikti, ücret iadesi alabilir miyim?', zaman: '18.11.2026 21:05' }] }
       ],
+      gunsonu: { tarih: '2026-11-18', metin: 'BUGÜN (18.11.2026 23:55, Türkiye saati)\nListeden çıkan (atanan/iptal) talep: 12\n10 dk üstü bekleyen: 1\nOrtalama bekleme: 4.2 dk, en uzun: 13 dk\n\nTOPLAM (46 talep)\nEn yoğun saatler: 9:00 (6), 15:00 (5), 8:00 (5)\nEn çok talep gelen alış bölgeleri: Kuşadası (21), Selçuk (9), Davutlar (6)' },
       basvurular: [
         { no: 21, ad: 'Örnek Başvuran', durum: 'Beklemede', tarih: new Date(n - 2 * 3600000).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''), telefon: '+905550000009', arac: 'Otomobil', ehliyet_bitis: '2032-04-29', src: false, psiko: true },
         { no: 20, ad: 'İkinci Başvuran', durum: 'Beklemede', tarih: new Date(n - 3600000).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''), arac: 'Otomobil, Minibüs', src: true, psiko: true },
