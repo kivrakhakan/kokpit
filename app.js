@@ -597,6 +597,8 @@
       '<div class="basv-gun">Ekip: alarm "Gördüm"</div>' + liste(v.gordum, 'Kayıt yok') +
       '<div class="basv-gun">Ekip: başvuru tiki</div>' + liste(v.basvuru_tik, 'Kayıt yok') +
       '<div class="basv-gun">Ekip: panelden şoför atama</div>' + liste(v.panel_atama, 'Kayıt yok') +
+      (v.destek ? '<div class="basv-gun">Destek talepleri</div><div class="kom">💬 Cevap bekleyen talep: <b>' + (v.destek.talep || 0) + '</b> · mesaj: <b>' + (v.destek.mesaj || 0) + '</b> · panelden gönderilen cevap: <b>' + (v.destek.cevap || 0) + '</b></div>' +
+        '<div class="basv-gun">Ekip: panelden destek cevabı</div>' + liste(v.destek.cevaplayan, 'Kayıt yok') : '') +
       '<div class="basv-gun">Kim okudu</div>' + (k.ekip || []).map((a) => {
         const o = k.okuma.find((x) => x.kim === a);
         return '<div class="kom">' + (o ? '✅ <b>' + esc(a) + '</b> · ' + new Date(o.zaman).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '⏳ <b>' + esc(a) + '</b> · henüz okumadı') + '</div>';
@@ -856,7 +858,8 @@
       veri: { talep: 46, onceki_talep: 39, ort_dk: 4.3, en_uzun_dk: 17, hizli: 38, acil: 2, gunler: [5, 6, 7, 6, 8, 9, 5],
         saatler: [1, 0, 0, 0, 0, 1, 2, 4, 5, 3, 2, 2, 3, 2, 2, 3, 4, 3, 2, 2, 1, 1, 1, 1],
         ilceler: [{ ad: 'Kuşadası', n: 21 }, { ad: 'Selçuk', n: 9 }, { ad: 'Davutlar', n: 6 }],
-        gordum: [{ kim: 'Burhan', n: 7 }, { kim: 'Cio', n: 4 }], basvuru_tik: [{ kim: 'Cio', n: 12 }], panel_atama: [{ kim: 'Burhan', n: 3 }] } };
+        gordum: [{ kim: 'Burhan', n: 7 }, { kim: 'Cio', n: 4 }], basvuru_tik: [{ kim: 'Cio', n: 12 }], panel_atama: [{ kim: 'Burhan', n: 3 }],
+        destek: { talep: 9, mesaj: 14, cevap: 11, cevaplayan: [{ kim: 'Hakan - Admin', n: 8 }, { kim: 'Cio', n: 3 }] } } };
     ciz();
     setInterval(ciz, 15000);
   }
