@@ -1,5 +1,5 @@
 // Basit önbellek: uygulama kabuğu çevrimdışı da açılsın; veri her zaman canlı alınır.
-const AD = 'sb-kokpit-v2';
+const AD = 'sb-kokpit-v3';
 const FN = 'https://yajzvvvygskkhbvxghrc.supabase.co/functions/v1/push';
 const IKON = 'https://soforbey.com/static/img/ikon.png';
 
@@ -37,7 +37,8 @@ self.addEventListener('fetch', (e) => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET' || u.origin !== location.origin) return;   // bulut istekleri önbelleğe alınmaz
   // Önce ağ (güncel sürüm), ağ yoksa önbellek
-  e.respondWith(fetch(e.request).then((r) => {
+  // cache: 'no-cache' → tarayıcının HTTP önbelleğine güvenme, sunucuya sor (yeni sürüm hemen gelsin)
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then((r) => {
     const kopya = r.clone();
     caches.open(AD).then((c) => c.put(e.request, kopya));
     return r;
