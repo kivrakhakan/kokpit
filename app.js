@@ -510,7 +510,9 @@
     } else {
       govde = 'Mesajınız için teşekkür ederiz. Konuyu inceleyip en kısa sürede size dönüş yapacağız.';
     }
-    return 'Merhaba' + (ad ? ' ' + ad : '') + ',\n' + (sonKisa ? 'Geç dönüş için kusura bakmayın. ' : '') + govde + '\n\nŞoför Bey Destek Ekibi';
+    // "Merhaba" yalnızca ilk cevapta; daha önce biz yazdıysak konuşma devam ediyor (kullanıcı, 2026-11-19)
+    const ilkCevap = !(t.mesajlar || []).some((m) => m.kim === 'destek');
+    return (ilkCevap ? 'Merhaba' + (ad ? ' ' + ad : '') + ',\n' : '') + (sonKisa ? 'Geç dönüş için kusura bakmayın. ' : '') + govde + '\n\nŞoför Bey Destek Ekibi';
   }
   function destekAc(t, basv) {
     let h = '<h3>💬 ' + esc(t.ad || 'Kişi') + '</h3><div class="alt">' + esc(t.konu) + ' · #' + esc(t.id) + '</div><div class="alt"><b>' + esc(kimlik(t, basv).yazi) + '</b></div>';
