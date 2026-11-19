@@ -166,12 +166,14 @@
     if (aktif.length && !musait.length) yap.push(['⚠', 'Müsait şoför yok; şoförleri arayın', 'admin/soforler']);
     if (+say.incelenen_sos > 0) yap.push(['🔎', say.incelenen_sos + ' SOS incelemede', 'admin/operasyon-merkezi']);
     const basv = Array.isArray(d.basvurular) ? d.basvurular : [];
+    const destek = Array.isArray(d.destek) ? d.destek : [];
+    if (destek.length) yap.push(['💬', destek.length + ' destek talebi cevap bekliyor', '#destek']);
     if (S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1) yap.unshift(['📊', 'Haftalık karne hazır: okuyup "Okudum" de', '#karne']);
     const bakilmamis = basv.filter((b) => !S.tikler[String(b.no)]).length;
     if (bakilmamis) yap.push(['🧑‍✈️', bakilmamis + ' şoför başvurusuna henüz bakılmadı', 'admin/sofor-basvurulari']);
     if (yap.length) {
       h += '<div class="kart"><h2>Kontrol et <span>admin panel</span></h2>' + yap.map((y) =>
-        (y[2] === '#karne' ? '<a class="satir yap" href="#" data-karne="1">' : '<a class="satir yap" href="' + ADMIN + y[2] + '" target="_blank" rel="noopener">') + '<span style="font-size:18px">' + y[0] + '</span><div class="ad">' + esc(y[1]) + '</div><span class="ok">›</span></a>').join('') + '</div>';
+        (y[2] === '#karne' ? '<a class="satir yap" href="#" data-karne="1">' : y[2] === '#destek' ? '<a class="satir yap" href="#destekKart">' : '<a class="satir yap" href="' + ADMIN + y[2] + '" target="_blank" rel="noopener">') + '<span style="font-size:18px">' + y[0] + '</span><div class="ad">' + esc(y[1]) + '</div><span class="ok">›</span></a>').join('') + '</div>';
     }
 
     h += '<div class="sayilar">' +
@@ -219,6 +221,19 @@
     });
     h += '</div>';
 
+    // Destek talepleri (son mesajı kişinin yazdığı = cevap bekleyen)
+    if (destek.length) {
+      h += '<div class="kart" id="destekKart"><h2>Destek talepleri <span>' + destek.length + ' cevap bekliyor</span></h2>';
+      destek.forEach((t, i) => {
+        const son = (t.mesajlar || []).filter((m) => m.kim === 'kisi').slice(-1)[0];
+        const gidiyor = S.komutlar.find((k) => k.tur === 'destek_cevap' && String(k.ilan_id) === String(t.id) && k.durum === 'bekliyor');
+        h += '<div class="satir"><div class="ad tikla" data-destek="' + i + '">' + esc(t.ad || 'Kişi') + ' · ' + esc(t.konu) +
+          '<small>' + esc(son ? son.metin.slice(0, 70) : '') + ' · ' + esc(t.son_hareket || '') + '</small></div>' +
+          (gidiyor ? '<span class="rozet r-gri">gönderiliyor…</span>' : '<button class="atabtn" data-destek="' + i + '">Yanıtla</button>') + '</div>';
+      });
+      h += '</div>';
+    }
+
     // Şoför başvuruları (yalnızca bekleyenler; onay/ret admin panelden)
     if (basv.length) {
       const gun = (b) => { const m = String(b.tarih || '').match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/); return m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') : '?'; };
@@ -253,7 +268,7 @@
     if (son.length) {
       h += '<div class="kart"><h2>Son işlemler</h2>';
       son.forEach((k) => {
-        const ne = k.tur === 'ata' ? 'şoför atama' : k.tur === 'gordum' ? '"Gördüm"' : '"İlgileniyorum"';
+        const ne = k.tur === 'ata' ? 'şoför atama' : k.tur === 'gordum' ? '"Gördüm"' : k.tur === 'destek_cevap' ? 'destek cevabı #' + esc(k.ilan_id) : '"İlgileniyorum"';
         const sonuc = k.durum === 'tamam' ? '✅' : k.durum === 'hata' ? '❌ ' + esc(k.mesaj || '') : '⏳ bekliyor';
         h += '<div class="kom"><b>' + esc(k.kim) + '</b> · ' + ne + ' · ' + trSaat(Date.parse(k.olusturma)) + ' · ' + sonuc + '</div>';
       });
@@ -267,6 +282,7 @@
     document.querySelectorAll('[data-sofor]').forEach((b) => { b.onclick = () => soforDetay(sfSira[+b.dataset.sofor]); });
     document.querySelectorAll('[data-basvuru]').forEach((b) => { b.onclick = () => basvuruDetay(basv[+b.dataset.basvuru]); });
     document.querySelectorAll('[data-tik]').forEach((b) => { b.onclick = () => tikle(basv[+b.dataset.tik], b); });
+    document.querySelectorAll('[data-destek]').forEach((b) => { b.onclick = () => destekAc(destek[+b.dataset.destek], basv); });
     if ($('cikis')) $('cikis').onclick = async () => { await S.db.auth.signOut(); location.reload(); };
     if ($('bildirimAc')) $('bildirimAc').onclick = bildirimAc;
     if ($('bildAyar')) $('bildAyar').onclick = () => window.ReactNativeWebView.postMessage('bildirim-ayar');
@@ -323,6 +339,62 @@
       (sayiMi(s.enlem) ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + harita(s) + '" target="_blank" rel="noopener">📍 Haritada aç</a>' : '<span></span>') +
       (s.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">📞 Ara</a>' : '<span></span>') + '</div>';
     pencere(h);
+  }
+
+  /* ---------------- destek talepleri: yanıt önerisi ---------------- */
+  const kucuk = (s) => String(s || '').toLocaleLowerCase('tr-TR');
+  const ayni = (a, b) => kucuk(a).replace(/\s+/g, ' ').trim() === kucuk(b).replace(/\s+/g, ' ').trim();
+  // Kural tabanlı öneri: konu + mesajdaki kelimeler + kendi verimiz (başvuru listesi). Yapay zekâ değil, ücretsiz.
+  function yanitOner(t, basv) {
+    const ad = String(t.ad || '').split(' ')[0];
+    const kisi = (t.mesajlar || []).filter((m) => m.kim === 'kisi');
+    const metin = kucuk(kisi.map((m) => m.metin).join(' ') + ' ' + t.konu);
+    const sonKisa = kisi.length > 1 && kisi[kisi.length - 1].metin.trim().length <= 3;   // "?" gibi hatırlatma
+    const var_ = (...k) => k.some((x) => metin.includes(x));
+    let govde;
+    if (var_('başvur', 'şoför ol', 'evrak', 'belge', 'ehliyet', 'adli sicil', 'ekranım kapalı', 'onay')) {
+      const b = (basv || []).find((x) => ayni(x.ad, t.ad));
+      if (b) {
+        const eksik = [!b.src ? 'SRC belgesi' : '', !b.psiko ? 'psikoteknik belgesi' : ''].filter(Boolean);
+        govde = 'Şoför başvurunuz #' + b.no + ' (' + b.tarih + ') sistemimizde kayıtlı ve şu an inceleme aşamasında.' +
+          (eksik.length ? ' Başvurunuzda ' + eksik.join(' ve ') + ' görünmüyor; ekleyebilirseniz değerlendirmeyi hızlandırırız.' : ' Belgeleriniz eksiksiz görünüyor.') +
+          ' İnceleme tamamlanınca hesabınız açılacak ve size bilgi vereceğiz.';
+      } else {
+        govde = 'Şoför başvurunuzla ilgili kontrol yaptık ancak başvuruyu bekleyenler arasında göremedik. Uygulamadaki "Şoför Başvurusu" adımlarını tamamlayıp ehliyet ve adli sicil belgenizi yüklediğinizden emin olur musunuz? Tamamladıysanız başvuruda kullandığınız telefon numarasını yazmanız yeterli, hemen bakalım.';
+      }
+    } else if (var_('gecik', 'gelmedi', 'bekledim') && var_('iade', 'ücret', 'para')) {
+      govde = 'Yaşadığınız gecikme için özür dileriz. Yolculuğun tarih ve saatini yazarsanız şoförümüzle görüşüp ücret iadesi talebinizi inceleyecek ve en kısa sürede size dönüş yapacağız.';
+    } else if (var_('ödeme', 'ücret', 'para', 'iade', 'kart', 'iban', 'fatura', 'çekildi', 'tahsil')) {
+      govde = 'Ödemenizle ilgili kontrol yapıyoruz. Ödemenin tarihini ve tutarını, varsa dekontunu yazarsanız konuyu hızlıca sonuçlandırırız.';
+    } else if (var_('iptal')) {
+      govde = 'İptal talebinizi aldık. Yolculuğun tarih ve saatini yazarsanız işlemi hemen yapıp size bilgi verelim.';
+    } else if (var_('gelmedi', 'gecik', 'bekledim', 'bekliyorum', 'nerede', 'ulaşamadım', 'şoför', 'yolculuk')) {
+      govde = 'Yaşadığınız durum için özür dileriz. Yolculuğun tarih ve saatini yazarsanız şoförümüzle görüşüp en kısa sürede size dönüş yapacağız.';
+    } else if (var_('hata', 'açılmıyor', 'giriş', 'şifre', 'çalışmıyor', 'kod', 'sms', 'uygulama', 'teknik', 'donuyor')) {
+      govde = 'Sorunu çözmek için uygulamayı güncelleyip yeniden açmayı deneyebilir misiniz? Devam ederse telefonunuzun modelini ve gördüğünüz hata mesajını (mümkünse ekran görüntüsüyle) yazarsanız hemen ilgileniriz.';
+    } else if (var_('sil', 'kapat')) {
+      govde = 'Hesabınızla ilgili talebinizi aldık. İşlemi güvenle yapabilmemiz için hesabınızda kayıtlı telefon numarasını yazar mısınız?';
+    } else if (var_('teşekkür', 'sağol', 'tamam', 'eyvallah')) {
+      govde = 'Rica ederiz, iyi yolculuklar dileriz.';
+    } else {
+      govde = 'Mesajınız için teşekkür ederiz. Konuyu inceleyip en kısa sürede size dönüş yapacağız.';
+    }
+    return 'Merhaba' + (ad ? ' ' + ad : '') + ',\n' + (sonKisa ? 'Geç dönüş için kusura bakmayın. ' : '') + govde + '\n\nŞoför Bey Destek Ekibi';
+  }
+  function destekAc(t, basv) {
+    let h = '<h3>💬 ' + esc(t.ad || 'Kişi') + '</h3><div class="alt">' + esc(t.konu) + ' · #' + esc(t.id) + ' · ' + (t.tip === 'sofor' ? 'Şoför' : 'Üye') + '</div>';
+    h += '<div class="sohbet">' + (t.mesajlar || []).map((m) => '<div class="balon ' + (m.kim === 'destek' ? 'biz' : 'o') + '">' + esc(m.metin) + '<small>' + esc(m.zaman) + '</small></div>').join('') + '</div>';
+    h += '<div class="basv-gun">Önerilen yanıt (düzeltebilirsin)</div><textarea id="destekMetin" rows="7" maxlength="3000"></textarea>' +
+      '<div class="ikili" style="margin-top:8px"><a class="btn" style="text-align:center;text-decoration:none" href="' + ADMIN + 'admin/destek-talepleri/' + encodeURIComponent(t.tip) + '/' + encodeURIComponent(t.id) + '" target="_blank" rel="noopener">Admin\'de aç</a>' +
+      '<button class="btn yesil" id="destekGonder">Gönder</button></div><p class="alt" style="margin-top:8px">Cevabı açık olan bilgisayardaki eklenti gönderir; birkaç saniye sürer.</p>';
+    pencere(h);
+    $('destekMetin').value = yanitOner(t, basv);
+    $('destekGonder').onclick = () => {
+      const m = $('destekMetin').value.trim();
+      if (!m) { bildir('Yanıt boş olamaz'); return; }
+      komutGonder({ tur: 'destek_cevap', ilan_tipi: t.tip, ilan_id: String(t.id), metin: m }, $('destekGonder'), t.ad || 'Kişi');
+      $('detayPerde').remove();
+    };
   }
 
   /* ---------------- haftalık karne ---------------- */
@@ -521,7 +593,7 @@
     const kayit = Object.assign({ kim: S.ekip.ad }, k);
     const { error } = await S.db.from('komutlar').insert(kayit);
     if (error) { bildir('Gönderilemedi: ' + error.message); if (btn) btn.disabled = false; return; }
-    bildir(k.tur === 'ata' ? ad + ' için atama gönderildi, bilgisayar yapıyor…' : k.tur === 'gordum' ? 'Alarm susturuluyor…' : 'Ekibe bildirildi');
+    bildir(k.tur === 'ata' ? ad + ' için atama gönderildi, bilgisayar yapıyor…' : k.tur === 'destek_cevap' ? ad + ' için cevap gönderiliyor…' : k.tur === 'gordum' ? 'Alarm susturuluyor…' : 'Ekibe bildirildi');
     if (Date.now() - S.guncelleme > C.bayatSn * 1000) bildir('Uyarı: şu an veri gelmiyor, işlemi yapacak açık bilgisayar olmayabilir.');
     komutlariYukle();
   }
@@ -601,6 +673,13 @@
         { id: 4, ad: 'Emre C.', durum: 'Çevrimdışı', cevrimici: false }
       ],
       odemeler: { rozet: 1, iban: [{ ref: 'SB-48213', tutar: '1.850 TL', yas_dk: 12 }] },
+      destek: [
+        { tip: 'uye', id: 16, ad: 'Örnek Başvuran', konu: 'Hesap ve Profil', son_hareket: '18.11.2026 23:40', mesajlar: [
+          { kim: 'kisi', metin: 'Şoför olmak için üyelik başvurusu yaptım ekranım henüz kapalı sebebini merak ediyorum, evrakları eksiksiz ekledim', zaman: '18.11.2026 23:39' },
+          { kim: 'kisi', metin: '?', zaman: '18.11.2026 23:40' }] },
+        { tip: 'uye', id: 12, ad: 'Ayşe Demo', konu: 'Yolculuk', son_hareket: '18.11.2026 21:05', mesajlar: [
+          { kim: 'kisi', metin: 'Şoför 20 dakika gecikti, ücret iadesi alabilir miyim?', zaman: '18.11.2026 21:05' }] }
+      ],
       basvurular: [
         { no: 21, ad: 'Örnek Başvuran', durum: 'Beklemede', tarih: new Date(n - 2 * 3600000).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''), telefon: '+905550000009', arac: 'Otomobil', ehliyet_bitis: '2032-04-29', src: false, psiko: true },
         { no: 20, ad: 'İkinci Başvuran', durum: 'Beklemede', tarih: new Date(n - 3600000).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''), arac: 'Otomobil, Minibüs', src: true, psiko: true },
