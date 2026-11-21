@@ -201,7 +201,7 @@
     // "Cevap gerekmiyor" işaretlenenler kişi yeniden yazana kadar gizli (anahtar son mesaja bağlı)
     const destek = (Array.isArray(d.destek) ? d.destek : []).filter((t) => !S.tikler[destekAnahtar(t)]);
     if (destek.length) yap.push(['💬', destek.length + ' destek talebi cevap bekliyor', '#destek']);
-    if (S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1) yap.unshift(['📊', 'Haftalık karne hazır: okuyup "Okudum" de', '#karne']);
+    if (S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1) yap.unshift(['📊', 'Haftalık rapor hazır: okuyup "Okudum" de', '#karne']);
     const bakilmamis = basv.filter((b) => !S.tikler[String(b.no)]).length;
     if (bakilmamis) yap.push(['📝', bakilmamis + ' şoför başvurusuna henüz bakılmadı', 'admin/sofor-basvurulari']);
     if (yap.length) {
@@ -356,7 +356,7 @@
     h += '§karne§';
     // Gün sonu özeti (karne sekmesinde, haftalık karnenin üstünde): eklenti her gün özet saatinde üretir
     if (d.gunsonu && d.gunsonu.metin) {
-      h += '<div class="kart"><h2>📊 Gün sonu özeti <span>' + esc(d.gunsonu.tarih || '') + '</span></h2>' +
+      h += '<div class="kart"><h2>Günlük rapor <span>' + esc(d.gunsonu.tarih || '') + '</span></h2>' +
         '<div class="kom" style="white-space:pre-line">' + esc(d.gunsonu.metin) + '</div></div>';
     }
     h += '<div class="kart">' + karneIcerik() + '</div>';
@@ -372,7 +372,7 @@
       ['harita', 'harita', 'Harita', 0],
       ['talep', 'op', 'Operasyon', sosList.length ? '!' : aktif.length],
       ['destek', 'destek', 'Destek', destek.length + bakilmamis],
-      ['karne', 'karne', 'Karne', kOkunmadi ? '!' : 0]
+      ['karne', 'karne', 'Rapor', kOkunmadi ? '!' : 0]
     ];
     goster += '<nav class="altmenu">' + sekmeler.map((s) => '<button data-sekme="' + s[0] + '" class="' + (s[0] === B ? 'on' : '') + '"><span class="am-ik">' + ikon(s[1]) +
       (s[3] ? '<em>' + esc(s[3]) + '</em>' : '') + '</span>' + s[2] + '</button>').join('') + '</nav>';
@@ -655,7 +655,7 @@
   // Karnenin içeriği (Karne sekmesinde gösterilir); "Okudum" düğmesi karneBagla ile bağlanır
   function karneIcerik() {
     const k = S.karne;
-    if (!k) return '<h3>📊 Haftalık karne</h3><div class="alt">Henüz karne yok. İlk karne, veriler biriktikten sonra pazartesi sabahı hazırlanır.</div>';
+    if (!k) return '<h3>Haftalık rapor</h3><div class="alt">Henüz rapor yok. İlk rapor, veriler biriktikten sonra pazartesi sabahı hazırlanır.</div>';
     const v = k.veri || {};
     const tarih = String(k.hafta).split('-').reverse().join('.');
     const fark = v.onceki_talep != null && v.onceki_talep > 0 ? Math.round(((v.talep - v.onceki_talep) / v.onceki_talep) * 100) : null;
@@ -663,7 +663,7 @@
     const saatler = (v.saatler || []).map((n, i) => n);
     const yogun = saatler.length ? saatler.indexOf(Math.max(...saatler)) : -1;
     const okudum = S.ekip && k.okuyanlar.indexOf(S.ekip.ad) !== -1;
-    let h = '<h3>📊 Haftalık karne</h3><div class="alt">' + tarih + ' haftası (pazartesi–pazar)</div>' +
+    let h = '<h3>Haftalık rapor</h3><div class="alt">' + tarih + ' haftası (pazartesi–pazar)</div>' +
       '<div class="sayilar" style="margin-top:6px">' +
       '<div class="sayi"><b>' + (v.talep || 0) + '</b><span>Talep' + (fark != null ? ' · ' + (fark >= 0 ? '▲' : '▼') + Math.abs(fark) + '%' : '') + '</span></div>' +
       '<div class="sayi"><b>' + (v.ort_dk != null ? String(v.ort_dk).replace('.', ',') : '–') + '</b><span>Ort. atama (dk)</span></div>' +
@@ -681,7 +681,7 @@
         const o = k.okuma.find((x) => x.kim === a);
         return '<div class="kom">' + (o ? '✅ <b>' + esc(a) + '</b> · ' + new Date(o.zaman).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '⏳ <b>' + esc(a) + '</b> · henüz okumadı') + '</div>';
       }).join('') +
-      (okudum ? '<div class="serit" style="background:#0d2a1a;border:1px solid #1b4a2f;color:#8fe3b0;margin-top:12px">✅ Okudun, teşekkürler.</div>' : '<button class="btn yesil" id="okudum" style="margin-top:12px">Okudum ✓</button>');
+      (okudum ? '<div class="serit" style="background:var(--yesilAcik);color:var(--mavi);margin-top:12px">✅ Okudun, teşekkürler.</div>' : '<button class="btn yesil" id="okudum" style="margin-top:12px">Okudum ✓</button>');
     return h;
   }
   function karneBagla() {
@@ -693,7 +693,7 @@
         if (error && error.code !== '23505') { bildir('Kaydedilemedi: ' + error.message); $('okudum').disabled = false; return; }
         await karneYukle();
       } else { k.okuyanlar.push(S.ekip.ad); k.okuma.push({ kim: S.ekip.ad, zaman: new Date().toISOString() }); }
-      bildir('✅ Karne okundu olarak işaretlendi');
+      bildir('✅ Rapor okundu olarak işaretlendi');
       ciz();
     };
   }
