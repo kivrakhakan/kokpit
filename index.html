@@ -241,6 +241,55 @@ input,textarea{background:var(--kart);border-color:var(--cizgi)}
 </defs></svg>
 <div id="uygulama" class="kap"></div>
 <div id="bildirim" class="bildirim"></div>
+<!-- Açılış ekranı (Android uygulamasındakiyle aynı sıra): ok gelir, kemer açılır, gözler belirir, kep iner,
+     Kepli Bey kepini kaldırıp göz kırpar. Panel çizilince (en az 2,4 sn, en çok 10 sn) kaybolur.
+     Uygulamanın içinde gösterilmez (orada yerel açılış var); aynı sekmede bir kez gösterilir. -->
+<div id="acilis" aria-hidden="true"><div class="ac-kutu">
+<svg viewBox="0 -14 240 254" class="ac-logo">
+  <path class="ac-ok" d="M120 162 L170 222 Q173 230 164 228 L120 215 L76 228 Q67 230 70 222 Z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+  <path class="ac-kemer" d="M48 180 A72 72 0 0 1 192 180 L152 180 A32 32 0 0 0 88 180 Z" fill="#fff"/>
+  <g class="ac-goz"><circle cx="94" cy="74" r="17" fill="#fff"/><circle class="ac-bebek" cx="97" cy="77" r="6.5" fill="#13261a"/></g>
+  <g class="ac-goz ac-sag"><circle cx="146" cy="74" r="17" fill="#fff"/><circle class="ac-bebek" cx="149" cy="77" r="6.5" fill="#13261a"/></g>
+  <g class="ac-kep" fill="#0a5a1c"><path d="M76 36 Q120 4 164 36 Z"/><rect x="66" y="32" width="108" height="17" rx="8"/><circle cx="120" cy="24" r="4.5" fill="#fff"/></g>
+</svg>
+<div class="ac-yazi"><b>Şoför Bey</b><span>KOKPİT</span></div></div></div>
+<style>
+#acilis{position:fixed;inset:0;z-index:9999;background:#00b621;display:grid;place-items:center;transition:opacity .38s ease-in}
+#acilis.cik{opacity:0}#acilis.cik .ac-kutu{transform:scale(1.12);transition:transform .38s ease-in}
+.ac-kutu{display:flex;flex-direction:column;align-items:center}
+.ac-logo{width:170px;height:auto;overflow:visible}
+.ac-logo *{transform-box:fill-box;transform-origin:center}
+.ac-ok,.ac-kemer,.ac-goz,.ac-bebek,.ac-kep,.ac-yazi{opacity:0}
+.ac-ok{animation:acOk .55s cubic-bezier(.2,1.4,.4,1) 0s forwards}
+.ac-kemer{animation:acBuyu .55s cubic-bezier(.2,1.5,.4,1) .22s forwards}
+.ac-goz{animation:acPop .45s cubic-bezier(.2,1.8,.4,1) .52s forwards}
+.ac-sag{animation:acPop .45s cubic-bezier(.2,1.8,.4,1) .52s forwards,acKirp .54s ease-in-out 1.6s}
+.ac-bebek{animation:acPop .4s cubic-bezier(.2,1.4,.4,1) .78s forwards}
+.ac-kep{animation:acKepIn .5s cubic-bezier(.2,1.4,.4,1) .95s forwards,acSelam 1.18s ease-in-out 1.55s}
+.ac-yazi{margin-top:18px;text-align:center;color:#fff;font-family:Barlow,system-ui,sans-serif;animation:acYazi .45s ease-out 1s forwards}
+.ac-yazi b{display:block;font-size:26px;font-weight:800;letter-spacing:.5px}.ac-yazi span{font-size:13px;letter-spacing:3px;opacity:.85}
+@keyframes acOk{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:none}}
+@keyframes acBuyu{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
+@keyframes acPop{from{opacity:0;transform:scale(0)}to{opacity:1;transform:none}}
+@keyframes acKepIn{from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:none}}
+@keyframes acSelam{0%,100%{opacity:1;transform:none}24%,49%{opacity:1;transform:translate(18px,-22px) rotate(-18deg)}}
+@keyframes acKirp{0%,100%{opacity:1;transform:none}24%,72%{opacity:1;transform:scaleY(.1)}}
+@keyframes acYazi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.ac-logo *,.ac-yazi{animation:none!important;opacity:1!important}}
+</style>
+<script>
+(function () {
+  var a = document.getElementById('acilis'), u = document.getElementById('uygulama');
+  var goster = true;
+  try { goster = !sessionStorage.getItem('sb_acilis_goruldu'); sessionStorage.setItem('sb_acilis_goruldu', '1'); } catch (e) { /* önemsiz */ }
+  if (window.ReactNativeWebView || !goster) { a.parentNode.removeChild(a); return; }
+  var t0 = Date.now(), hazir = false, bitti = false;
+  function kapat() { if (bitti) return; bitti = true; a.classList.add('cik'); setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 420); }
+  function dene() { if (hazir && Date.now() - t0 >= 2400) kapat(); }
+  new MutationObserver(function () { if (u.children.length) { hazir = true; dene(); } }).observe(u, { childList: true });
+  setTimeout(dene, 2400); setTimeout(kapat, 10000);
+})();
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
