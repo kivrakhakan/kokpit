@@ -121,12 +121,16 @@
 
     let h = '';
     if (DEMO) h += '<div class="etiket">DEMO · örnek veri</div>';
-    h += '<header><img class="logo" src="' + LOGO + '" alt="Şoför Bey"><div><h1>Şoför Bey Kokpit</h1><small>' +
-      esc(S.ekip ? S.ekip.ad : '') + (d.merkez ? ' · kaynak: ' + esc(d.merkez) : '') + '</small></div>' +
-      '<div class="saat">' + trSaat(now) + '<br><small>' + (S.guncelleme ? 'veri ' + sure(yas) + (yas < 60000 ? '' : ' önce') : 'veri yok') + '</small></div>' +
-      '<button class="ikonbtn" data-karne="1" title="Haftalık karne">📊</button>' +
-      (window.ReactNativeWebView ? '<button class="ikonbtn" id="bildAyar" title="Bildirim ayarları">🔔</button>' : '') +
-      (DEMO ? '' : '<button class="ikonbtn" id="cikis" title="Çıkış">⎋</button>') + '</header>';
+    const sosList = Array.isArray(d.sos) ? d.sos : [];
+    const ikon = (ad) => '<svg aria-hidden="true"><use href="#i-' + ad + '"/></svg>';
+    // Üst yeşil bant (logodaki kemerle biter). SOS varsa beyaz şerit bandın içinde; Operasyon'da kartın kendisi görünür.
+    h += '<div class="bant"><header><img class="logo" src="' + LOGO + '" alt="Şoför Bey"><div><h1>Kokpit</h1><small>' +
+      esc(S.ekip ? S.ekip.ad : '') + (d.merkez ? ', kaynak ' + esc(d.merkez) : '') + '</small></div>' +
+      '<div class="saat">' + trSaat(now) + '<br><small>' + (S.guncelleme ? (yas < 60000 ? 'az önce güncellendi' : sure(yas) + ' önce güncellendi') : 'veri yok') + '</small></div>' +
+      (window.ReactNativeWebView ? '<button class="ikonbtn" id="bildAyar" title="Bildirim ayarları" aria-label="Bildirim ayarları">' + ikon('zil') + '</button>' : '') +
+      (DEMO ? '' : '<button class="ikonbtn" id="cikis" title="Çıkış" aria-label="Çıkış">' + ikon('cikis') + '</button>') + '</header>' +
+      (sosList.length && S.sekme !== 'talep' ? '<a class="sos-bant" href="#" data-sekme="talep">' + ikon('uyari') + (sosList.length > 1 ? sosList.length + ' SOS bildirimi var' : 'SOS bildirimi var') + '<u>Aç</u></a>' : '') +
+      '</div>';
 
     // Telefon bildirimi
     if (S.bildirim === 'kapali') h += '<div class="serit sari" style="display:flex;align-items:center;gap:10px"><span style="flex:1">🔔 Alarm gelince telefonun çalsın mı?</span><button class="atabtn" id="bildirimAc">Bildirimleri aç</button></div>';
@@ -139,8 +143,7 @@
     if (!bayat && d.sayfa === 'logout') h += '<div class="serit kirmizi">⚠ Bilgisayardaki panel oturumu kapanmış, tekrar giriş yapılmalı.</div>';
     else if (!bayat && d.sayfa && d.sayfa !== 'atama') h += '<div class="serit sari">Bilgisayarda Operasyon Merkezi sayfası açık değil; talepler izlenmiyor olabilir.</div>';
 
-    // SOS (v9.30 özeti): Özet'in ve Operasyon'un en üstünde. Durum değişikliği komutla, eklenti siteye yazar.
-    const sosList = Array.isArray(d.sos) ? d.sos : [];
+    // SOS (v9.30 özeti): ayrıntı kartı Operasyon'un en üstünde. Durum değişikliği komutla, eklenti siteye yazar.
     const telA = (t, yazi) => (t ? '<a class="tel" href="tel:' + esc(String(t).replace(/[^\d+]/g, '')) + '">' + yazi + '</a>' : '');
     let sosH = '';
     if (sosList.length) {
@@ -163,34 +166,37 @@
 
     // Bölümler: §ad§ işaretinden sonrası o sekmeye ait; işaretten öncesi (başlık + uyarı şeritleri) her sekmede görünür
     h += '§ozet§';
-    h += sosH;
     // Ana durum kartı
     const enEski = aktif[0];
     const al = d.alarm || {};
     const susKalan = al.susturma_bitis && al.susturma_bitis > now ? Math.ceil((al.susturma_bitis - now) / 60000) : 0;
     if (enEski) {
       const sv = seviye(enEski.yasDk, e);
-      h += '<div class="durum ' + (sv[0] === 'acil' ? 'acil' : sv[0] === 'alarm' ? 'alarm' : '') + '">' +
-        '<b>' + (sv[0] === 'acil' ? '🚨 ' : '') + aktif.length + ' talep bekliyor · en eski ' + Math.floor(enEski.yasDk) + ' dk</b>' +
-        '<p>' + esc(yerYaz(enEski.nereden)) + ' → ' + esc(yerYaz(enEski.nereye)) + (susKalan ? ' · alarm ' + susKalan + ' dk susturuldu' : '') + '</p>' +
-        '<div class="ikili"><button class="btn ' + (sv[0] === 'acil' ? 'kirmizi' : '') + '" data-kom="gordum">👀 Gördüm</button>' +
-        '<button class="btn mavi" data-kom="ilgileniyorum">🙋 İlgileniyorum</button></div></div>';
+      // Ana kart: logonun yeşili; ACİL eşiği geçince kırmızıya döner
+      const dk = Math.floor(enEski.yasDk);
+      h += '<div class="durum ana' + (sv[0] === 'acil' ? ' acil' : '') + '">' +
+        '<span class="bekleme ' + sv[0] + '">' + (dk < 1 ? 'Az önce geldi' : dk + ' dakikadır bekliyor') + '</span>' +
+        '<b>' + (aktif.length > 1 ? aktif.length + ' talep şoför bekliyor' : 'Talep şoför bekliyor') + '</b>' +
+        '<p class="rota"><i></i><span>' + esc(yerYaz(enEski.nereden)) + '</span><span class="hat"></span><s></s><span>' + esc(yerYaz(enEski.nereye)) + '</span></p>' +
+        (susKalan ? '<p class="sus">Alarm ' + susKalan + ' dakika susturuldu</p>' : '') +
+        '<div class="ikili"><button class="btn saydam" data-kom="gordum">Gördüm</button>' +
+        '<button class="btn beyaz" data-kom="ilgileniyorum">İlgileniyorum</button></div></div>';
     } else if (odSayi) {
-      h += '<div class="durum alarm"><b>💳 ' + odSayi + ' ödeme onay bekliyor</b><p>Ödemeler sayfasından onaylayın.</p>' +
-        '<div class="ikili"><button class="btn" data-kom="gordum">👀 Gördüm</button><button class="btn mavi" data-kom="ilgileniyorum">🙋 İlgileniyorum</button></div></div>';
+      h += '<div class="durum ana"><span class="bekleme">Ödemeler</span><b>' + odSayi + ' ödeme onay bekliyor</b><p>Ödemeler sayfasından onaylayın.</p>' +
+        '<div class="ikili"><button class="btn saydam" data-kom="gordum">Gördüm</button><button class="btn beyaz" data-kom="ilgileniyorum">İlgileniyorum</button></div></div>';
     } else {
-      h += '<div class="durum sakin"><b>✅ Her şey yolunda</b><p>Bekleyen talep ve ödeme yok.</p></div>';
+      h += '<div class="durum ana sakin"><b>Her şey yolunda</b><p>Bekleyen talep ve ödeme yok.</p></div>';
     }
 
     // Admin panelde bakılması gerekenler (dokununca ilgili sayfa açılır)
     const say = d.sayilar || {};
     const yap = [];
     if (!bayat && d.sayfa === 'logout') yap.push(['🔑', 'Bilgisayardaki panel oturumu kapanmış: tekrar giriş yap', 'admin/']);
-    if (+say.aktif_sos > 0) yap.push(['🆘', say.aktif_sos + ' SOS bildirimi var', 'admin/operasyon-merkezi']);
+    if (+say.aktif_sos > 0 && !sosList.length) yap.push(['🆘', say.aktif_sos + ' SOS bildirimi var', 'admin/operasyon-merkezi']);
     if (odSayi) yap.push(['💳', odSayi + ' ödeme onay bekliyor', 'admin/odemeler']);
     if (aktif.some((t) => t.yasDk >= e.acil)) yap.push(['🚗', 'ACİL: ' + aktif.filter((t) => t.yasDk >= e.acil).length + ' talep ' + e.acil + ' dk\'dan uzun süredir şoför bekliyor', 'admin/operasyon-merkezi']);
     if (aktif.length && !musait.length) yap.push(['⚠', 'Müsait şoför yok; şoförleri arayın', 'admin/soforler']);
-    if (+say.incelenen_sos > 0) yap.push(['🔎', say.incelenen_sos + ' SOS incelemede', 'admin/operasyon-merkezi']);
+    if (+say.incelenen_sos > 0 && !sosList.length) yap.push(['🔎', say.incelenen_sos + ' SOS incelemede', 'admin/operasyon-merkezi']);
     const basv = Array.isArray(d.basvurular) ? d.basvurular : [];
     // "Cevap gerekmiyor" işaretlenenler kişi yeniden yazana kadar gizli (anahtar son mesaja bağlı)
     const destek = (Array.isArray(d.destek) ? d.destek : []).filter((t) => !S.tikler[destekAnahtar(t)]);
@@ -207,16 +213,7 @@
       '<div class="sayi"><b style="color:' + (aktif.length ? 'var(--kirmizi)' : 'var(--yazi)') + '">' + aktif.length + '</b><span>Bekleyen talep</span></div>' +
       '<div class="sayi"><b style="color:' + (odSayi ? 'var(--sari)' : 'var(--yazi)') + '">' + odSayi + '</b><span>Bekleyen ödeme</span></div>' +
       '<div class="sayi"><b style="color:' + (musait.length ? 'var(--yesil)' : 'var(--kirmizi)') + '">' + musait.length + '</b><span>Müsait şoför</span></div></div>';
-    // Aktif şoförler (müsait + meşgul) Özet'te de görünsün (kullanıcı isteği 2026-11-20)
-    const aktifSf = soforler.filter((s) => s.durum === 'Müsait' || s.durum === 'Meşgul').sort((a, b) => (a.durum === 'Müsait' ? 0 : 1) - (b.durum === 'Müsait' ? 0 : 1));
-    h += '<div class="kart"><h2>Aktif şoförler <span>' + musait.length + ' müsait · ' + (aktifSf.length - musait.length) + ' meşgul</span></h2>';
-    if (!aktifSf.length) h += '<div class="bos">Şu an aktif şoför yok.</div>';
-    aktifSf.forEach((s) => {
-      h += '<div class="sf"><span class="nokta" style="background:' + (s.durum === 'Müsait' ? 'var(--yesil)' : 'var(--sari)') + '"></span><div class="ad">' + esc(s.ad) +
-        '<small>' + esc(s.durum) + (s.konum_ms ? ' · konum ' + sure(now - s.konum_ms) + ' önce' : '') + '</small></div>' +
-        (s.telefon ? '<a class="tel" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">Ara</a>' : '') + '</div>';
-    });
-    h += '</div>';
+    // 2026-11-22: "Aktif şoförler" Özet'ten kaldırıldı (kullanıcı: Özet ile Operasyon aynı); şoför listesi yalnız Operasyon'da
 
     // Harita (talepler + şoförler). Harita bir kez kurulur, her çizimde yerine taşınır (yeniden yüklenmesin)
     h += '§harita§';
@@ -371,13 +368,13 @@
     for (let i = 1; i < parca.length; i += 2) if (parca[i] === B) goster += parca[i + 1];
     const kOkunmadi = S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1;
     const sekmeler = [
-      ['ozet', '🏠', 'Özet', yap.length],
-      ['harita', '🗺️', 'Harita', 0],
-      ['talep', '🚗', 'Operasyon', sosList.length ? 'SOS' : aktif.length],
-      ['destek', '💬', 'Destek', destek.length + bakilmamis],
-      ['karne', '📊', 'Karne', kOkunmadi ? '!' : 0]
+      ['ozet', 'ozet', 'Özet', yap.length],
+      ['harita', 'harita', 'Harita', 0],
+      ['talep', 'op', 'Operasyon', sosList.length ? '!' : aktif.length],
+      ['destek', 'destek', 'Destek', destek.length + bakilmamis],
+      ['karne', 'karne', 'Karne', kOkunmadi ? '!' : 0]
     ];
-    goster += '<nav class="altmenu">' + sekmeler.map((s) => '<button data-sekme="' + s[0] + '" class="' + (s[0] === B ? 'on' : '') + '"><span class="am-ik">' + s[1] +
+    goster += '<nav class="altmenu">' + sekmeler.map((s) => '<button data-sekme="' + s[0] + '" class="' + (s[0] === B ? 'on' : '') + '"><span class="am-ik">' + ikon(s[1]) +
       (s[3] ? '<em>' + esc(s[3]) + '</em>' : '') + '</span>' + s[2] + '</button>').join('') + '</nav>';
 
     const eskiHarita = S.haritaEl && S.haritaEl.parentNode ? S.haritaEl.parentNode.removeChild(S.haritaEl) : S.haritaEl;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#00b621">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ŞB Kokpit">
@@ -11,8 +11,12 @@
 <link rel="icon" href="https://soforbey.com/static/img/ikon.png">
 <link rel="apple-touch-icon" href="https://soforbey.com/static/img/ikon.png">
 <title>Şoför Bey Kokpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Barlow+Semi+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0f1115;--kart:#181b22;--kart2:#1f232c;--cizgi:#262a33;--yazi:#e8eaf0;--soluk:#8a90a0;--yesil:#2ecc71;--sari:#f5b041;--turuncu:#ff7a2f;--kirmizi:#ff4757;--mavi:#4da3ff}
+/* Tema (2026-11-22): logo yeşili #00B621, düz ve yuvarlak; telefon gündüzdeyse açık, gecedeyse koyu */
+:root{--bg:#f2f5f1;--kart:#ffffff;--kart2:#ffffff;--cizgi:#dbe4dc;--yazi:#13261a;--soluk:#5a6f60;--yesil:#00b621;--yol:#0a5a1c;--yesilAcik:#e3f5e6;--sari:#b97f00;--turuncu:#d9620a;--kirmizi:#e5253b;--mavi:#007a17;--menu:#ffffff;--golge:0 2px 0 #dfe7e0}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1611;--kart:#152019;--kart2:#18241c;--cizgi:#243229;--yazi:#e9f1ea;--soluk:#8ea395;--yesil:#00c424;--yol:#06401a;--yesilAcik:#12311a;--sari:#f5b041;--turuncu:#ff8a3d;--kirmizi:#ff4757;--mavi:#5ee27a;--menu:#121c15;--golge:0 2px 0 #070b08}}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--yazi);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;-webkit-tap-highlight-color:transparent}
 button{font:inherit;cursor:pointer}
@@ -113,19 +117,106 @@ input{width:100%;padding:13px 12px;border-radius:10px;border:1px solid var(--ciz
 .bildirim{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2b303b;color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;z-index:10;max-width:90vw;opacity:0;transition:opacity .2s;pointer-events:none}
 .bildirim.goster{opacity:1}
 .etiket{position:fixed;top:8px;right:8px;background:var(--sari);color:#111;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;z-index:5}
+a.sos-serit{display:block;text-decoration:none;color:#fff;font-weight:700;animation:sosYan 1s infinite alternate}
 .sos-kart{border:2px solid var(--kirmizi);background:#2a1216}.sos-satir{padding:10px 0;border-top:1px solid #ffffff14}.sos-satir:first-of-type{border-top:0}
 .sos-satir b{display:block;font-size:15px}.sos-satir small{display:block;color:var(--soluk);margin-top:3px}.sos-satir p{margin:6px 0}
 .sos-dugme{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0 8px}.sos-satir .ikili{margin-top:6px}
 .sos-nokta{animation:sosYan 1s infinite alternate}@keyframes sosYan{from{opacity:1}to{opacity:.45}}
+
+/* ---------- Tema 2026-11-22: yapı ---------- */
+html,body{font-family:Barlow,system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:500}
+h1,h2,h3,.durum b,.sayi b{font-family:"Barlow Semi Condensed",Barlow,sans-serif}
+.kap{padding-top:0}
+.bant{margin:0 -16px 4px;padding:calc(10px + env(safe-area-inset-top)) 16px 34px;background:var(--yesil);color:#fff;position:relative}
+.bant::after{content:"";position:absolute;left:-12%;right:-12%;bottom:-1px;height:30px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0}
+.bant header{margin:0;position:relative;z-index:1}
+.bant header h1{font-size:21px;font-weight:800}.bant header small,.bant .saat{color:#ffffffd9}
+.bant .logo{box-shadow:0 0 0 2px #ffffff55}
+.ikonbtn{color:#fff;width:34px;height:34px;padding:0;display:grid;place-items:center;border-radius:50%}
+.ikonbtn svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ikonbtn:active{background:#ffffff26}
+a.sos-bant{position:relative;z-index:1;margin-top:12px;display:flex;align-items:center;gap:10px;background:#fff;color:#c8162c;border-radius:12px;padding:10px 12px;font-weight:700;text-decoration:none}
+a.sos-bant svg{width:18px;height:18px;fill:#e5253b;flex:none;animation:sosYan 1s infinite alternate}
+a.sos-bant u{margin-left:auto;text-decoration:none;color:#13261a}
+.serit{position:relative;z-index:1}
+.serit.kirmizi{background:#fde8ea;border:0;color:#a3122a}.serit.sari{background:#fff3d6;border:0;color:#7a5200}
+@media (prefers-color-scheme:dark){.serit.kirmizi{background:#3a1218;color:#ffb3ba}.serit.sari{background:#33270c;color:#ffd98a}}
+/* ana kart: logonun yeşili, köşede logodaki iki nokta */
+.durum.ana{position:relative;overflow:hidden;background:var(--yesil);border:0;color:#fff;border-radius:24px;padding:16px;box-shadow:0 4px 0 var(--yol);margin:0 0 16px}
+.durum.ana::before,.durum.ana::after{content:"";position:absolute;width:17px;height:17px;border-radius:50%;background:#ffffff38;top:18px}
+.durum.ana::before{right:44px}.durum.ana::after{right:18px}
+.durum.ana.acil{background:var(--kirmizi);box-shadow:0 4px 0 #9c1426}
+.durum.ana b{font-size:23px;font-weight:700;margin:10px 0 6px;line-height:1.15}
+.durum.ana.sakin b{margin-top:0}
+.durum.ana p{color:#ffffffe0;margin:0 0 14px;font-weight:600}
+.bekleme{display:inline-block;font-size:13px;font-weight:700;padding:4px 11px;border-radius:20px;background:#fff;color:var(--yol)}
+.bekleme.alarm,.bekleme.uyari{color:#c25e00}.bekleme.acil{color:#c8162c}
+.rota{display:flex;align-items:center;gap:7px;min-width:0}
+.rota i,.rota s{width:9px;height:9px;border-radius:50%;flex:none}.rota i{background:#fff}.rota s{box-shadow:inset 0 0 0 2.5px #fff}
+.rota .hat{flex:0 1 34px;min-width:14px;height:2px;background:#ffffff80}
+.rota span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rota span:first-of-type{flex-shrink:0;max-width:45%}
+.durum.ana .sus{font-size:13px;margin-top:-8px}
+.btn{font-family:inherit;font-weight:700;border-radius:13px}
+.btn.saydam{background:#ffffff2e;color:#fff;box-shadow:0 3px 0 #00000026}
+.btn.beyaz{background:#fff;color:var(--yol);box-shadow:0 3px 0 #00000026}
+.durum.ana.acil .btn.beyaz{color:#9c1426}
+.btn:active{transform:translateY(2px)}
+.btn.mavi,.btn.yesil{background:var(--yesil);box-shadow:0 3px 0 var(--yol)}
+.btn.kirmizi{box-shadow:0 3px 0 #9c1426}
+.durum:not(.ana){background:var(--kart);border:0;box-shadow:var(--golge)}
+/* sayılar: kart değil, tek satır */
+.sayilar{display:flex;gap:0;margin:0 2px 16px}
+.sayi{flex:1;background:none;border:0;border-left:1.5px solid var(--cizgi);border-radius:0;padding:0 0 0 12px;text-align:left}
+.sayi:first-child{border-left:0;padding-left:0}
+.sayi b{font-size:32px;font-weight:800;line-height:1}.sayi span{font-size:13px;font-weight:600}
+/* kartlar ve başlıklar */
+.kart{border:0;border-radius:18px;box-shadow:var(--golge)}
+.kart h2{text-transform:none;letter-spacing:0;font-size:17px;font-weight:700;color:var(--yazi);align-items:baseline}
+.kart h2 span{font-family:Barlow,sans-serif;font-size:13px;font-weight:600;color:var(--soluk)}
+.atabtn{background:var(--yesil);box-shadow:0 3px 0 var(--yol);font-family:inherit}
+.oneri{color:var(--mavi)}
+a.tel{color:var(--mavi);font-weight:700}
+.cubuk{background:var(--cizgi)}
+.r-gri{background:var(--cizgi)}
+.sos-kart{border:2px solid var(--kirmizi);background:var(--kart)}
+.sos-satir{border-color:var(--cizgi)}
+#harita{background:var(--cizgi)}
+.balon.biz{background:var(--yesilAcik);border-color:var(--yesil)}
+.secim.sec{border-color:var(--yesil);background:var(--yesilAcik)}
+.tik{border-color:var(--cizgi);color:#fff}
+.bildirim{background:#13261a}
+.pencere{box-shadow:0 -6px 30px #0003}
+.etiket{background:#13261a;color:#fff}
+/* alt menü: logodan çizilmiş ikonlar, seçili sekme yeşil daire */
+.altmenu{background:var(--menu);border-top:1.5px solid var(--cizgi);padding:6px 6px calc(8px + env(safe-area-inset-bottom));align-items:flex-end}
+.altmenu button{color:var(--soluk);font-weight:600;font-size:11.5px;gap:1px;font-family:inherit}
+.altmenu button.on{background:none;color:var(--yazi);font-weight:700}
+.am-ik{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:0}
+.am-ik svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.altmenu button.on .am-ik{background:var(--yesil);color:#fff;box-shadow:0 3px 0 var(--yol);transform:translateY(-3px)}
+.am-ik em{top:0;right:-2px;border:2px solid var(--menu)}
+input,textarea{background:var(--kart);border-color:var(--cizgi)}
+.giris h1{font-size:24px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-ozet" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="8.3" cy="4.4" r="2"/><circle cx="15.7" cy="4.4" r="2"/><path d="M2.5 15.5a9.5 8 0 0 1 19 0h-4.2a5.3 4.3 0 0 0-10.6 0z"/><path d="M12 13.2l5.2 9.3-5.2-2.6-5.2 2.6z"/></g></symbol>
+<symbol id="i-harita" viewBox="0 0 24 24"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+<symbol id="i-op" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.3"/><circle cx="18" cy="6" r="2.3"/><path d="M8.3 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.7"/></symbol>
+<symbol id="i-destek" viewBox="0 0 24 24"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-7l-4.5 3.5v-3.5H5A1.5 1.5 0 0 1 3.5 15V7A1.5 1.5 0 0 1 5 5.5z"/><circle cx="8.5" cy="11" r=".6" fill="currentColor"/><circle cx="12" cy="11" r=".6" fill="currentColor"/><circle cx="15.5" cy="11" r=".6" fill="currentColor"/></symbol>
+<symbol id="i-karne" viewBox="0 0 24 24"><path d="M5 19.5V13M12 19.5V5M19 19.5V9.5"/></symbol>
+<symbol id="i-uyari" viewBox="0 0 24 24"><path d="M12 2l10 18H2z"/></symbol>
+<symbol id="i-zil" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+<symbol id="i-cikis" viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 8l-4 4 4 4M6 12h9"/></symbol>
+</defs></svg>
 <div id="uygulama" class="kap"></div>
 <div id="bildirim" class="bildirim"></div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js?v=20261119"></script>
-<script src="app.js?v=20261122a"></script>
+<script src="app.js?v=20261122c"></script>
 </body>
 </html>
