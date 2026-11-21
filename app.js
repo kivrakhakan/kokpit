@@ -9,16 +9,11 @@
   const DEMO = /[?&]demo=1/.test(location.search);
   // Panelin "Yenilikler" kartı (her yeni sürümde surum değişir, maddeler yenilenir)
   const YENILIK = {
-    surum: '2026-11-22b', tarih: '22 Kasım',
+    surum: '2026-11-22c', tarih: '22 Kasım',
     maddeler: [
-      ['Kepli Bey geldi. ', 'Logomuzdan doğan maskot: her şey yolundayken gülümser, SOS\'ta telaşlanır, izleme kapanınca uyur.'],
-      ['Yeni Şoförler sekmesi. ', 'Bekleyen ehliyet yenilemeleri, şoförlerin anlık durumu, başvurular ve şoför kayıtları (eksik belgeler) tek yerde. Onay ve düzenleme yine sitede yapılır.'],
-      ['Yeni ikonlar her yerde. ', '"Kontrol et" listesi, SOS kartı ve talep önerilerindeki emojiler yerine panelin kendi çizgi ikonları geldi.'],
-      ['Yeni görünüm. ', 'Şoför Bey yeşili, logodan çizilmiş menü ikonları. Telefon gece modundaysa panel de koyu açılır.'],
-      ['Operasyon sekmesi. ', 'SOS bildirimleri, aktif yolculuklar ve ileri rezervasyonlar burada. SOS\'u "İnceleniyor" ya da "Çözüldü" yapabilirsiniz.'],
-      ['Haritada SOS. ', 'SOS bildirilen yer haritada kırmızı nokta olarak görünür.'],
-      ['Karne artık Rapor. ', 'Günlük ve haftalık raporlar Rapor sekmesinde.'],
-      ['Daha sade Özet. ', 'SOS varsa en üstte tek satır çıkar; dokununca Operasyon açılır.']
+      ['Rezervasyona şoför atama. ', 'Operasyon sekmesindeki İleri rezervasyonlar listesinde, şoförü atanmamış rezervasyonun yanında artık "Şoför ata" düğmesi var.'],
+      ['Tüm şoförler listelenir. ', 'Rezervasyon ileri tarihli olduğu için şu an meşgul ya da çevrimdışı olan şoförler de seçilebilir.'],
+      ['Atamayı bilgisayar yapar. ', 'Açık olan bilgisayardaki eklenti birkaç saniyede atamayı yapar ve ekibe Telegram ile bildirir.']
     ]
   };
   const $ = (id) => document.getElementById(id);
@@ -308,7 +303,9 @@
         const acil = !r.sofor_id && kalan !== null && kalan < 2 * 3600000;
         h += '<div class="satir"><div class="ad">' + esc(gun) + ' · ' + guz(r) +
           '<small>#' + esc(r.id) + ' · Müşteri: ' + esc(r.musteri || '-') + (r.tutar ? ' · ' + esc(r.tutar) + ' TL' : '') + (r.sofor_id ? ' · Şoför: ' + esc(r.sofor || '#' + r.sofor_id) : '') + '</small></div>' +
-          (r.sofor_id ? '<span class="rozet r-ok">atandı</span>' : '<span class="rozet ' + (acil ? 'r-acil' : 'r-uyari') + '">atanmamış</span>') + '</div>';
+          (r.sofor_id ? '<span class="rozet r-ok">atandı</span>' :
+            S.komutlar.find((k) => k.tur === 'ata' && k.ilan_tipi === 'rezervasyon' && String(k.ilan_id) === String(r.id) && k.durum === 'bekliyor') ? '<span class="rozet r-gri">atanıyor…</span>' :
+            '<span class="rozet ' + (acil ? 'r-acil' : 'r-uyari') + '">atanmamış</span><button class="atabtn" data-rata="' + esc(r.id) + '">Şoför ata</button>') + '</div>';
       });
       h += '</div>';
     }
@@ -463,6 +460,12 @@
     if ($('yenilikTamam')) $('yenilikTamam').onclick = () => { try { localStorage.setItem('sb_yenilik_gordu', YENILIK.surum); } catch (e) { /* önemsiz */ } ciz(); };
     document.querySelectorAll('[data-kom]').forEach((b) => { b.onclick = () => komutGonder({ tur: b.dataset.kom }, b); });
     document.querySelectorAll('[data-ata]').forEach((b) => { b.onclick = () => ataAc(talepler[+b.dataset.ata]); });
+    document.querySelectorAll('[data-rata]').forEach((b) => {   // rezervasyona şoför atama (ileri tarihli: tüm şoförler listelenir)
+      b.onclick = () => {
+        const r = ((S.durum && S.durum.rezervasyonlar) || []).find((x) => String(x.id) === b.dataset.rata);
+        if (r) ataAc(Object.assign({ tip: 'rezervasyon' }, r), true);
+      };
+    });
     document.querySelectorAll('[data-detay]').forEach((b) => { b.onclick = () => talepDetay(talepler[+b.dataset.detay], musait); });
     document.querySelectorAll('[data-sofor]').forEach((b) => { b.onclick = () => soforDetay(sfSira[+b.dataset.sofor]); });
     document.querySelectorAll('[data-basvuru]').forEach((b) => { b.onclick = () => basvuruDetay(basv[+b.dataset.basvuru]); });
@@ -862,7 +865,7 @@
   }
 
   /* ---------------- şoför atama penceresi ---------------- */
-  function ataAc(t) { S.ata = t; S.secili = null; S.tumu = false; cizAta(); }
+  function ataAc(t, tumu) { S.ata = t; S.secili = null; S.tumu = !!tumu; cizAta(); }
   function cizAta() {
     let p = $('ataPerde');
     if (!p) { p = document.createElement('div'); p.id = 'ataPerde'; p.className = 'perde'; document.body.appendChild(p); }
@@ -873,7 +876,9 @@
       const k = sayiMi(n.enlem) && sayiMi(s.enlem) ? km(+n.enlem, +n.boylam, +s.enlem, +s.boylam) : null;
       return { s, k };
     }).sort((a, b) => (a.k == null) - (b.k == null) || (a.k || 0) - (b.k || 0));
-    let h = '<div class="pencere"><h3>Şoför ata</h3><div class="alt">' + esc(yerYaz(t.nereden)) + ' → ' + esc(yerYaz(t.nereye)) + ' · ' + Math.floor((Date.now() - t.olusma) / 60000) + ' dk bekliyor</div>';
+    let h = '<div class="pencere"><h3>Şoför ata</h3><div class="alt">' + esc(yerYaz(t.nereden)) + ' → ' + esc(yerYaz(t.nereye)) + ' · ' + (t.tip === 'rezervasyon'
+      ? 'Rezervasyon #' + esc(t.id) + (t.zaman ? ' · ' + esc(new Date(t.zaman).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', weekday: 'short' }) + ' ' + trSaat(t.zaman)) : '')
+      : Math.floor((Date.now() - t.olusma) / 60000) + ' dk bekliyor') + '</div>';
     if (!liste.length) h += '<div class="bos">Müsait şoför yok.</div>';
     liste.forEach((x) => {
       const s = x.s;
