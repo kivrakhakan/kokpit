@@ -139,8 +139,31 @@
     if (!bayat && d.sayfa === 'logout') h += '<div class="serit kirmizi">⚠ Bilgisayardaki panel oturumu kapanmış, tekrar giriş yapılmalı.</div>';
     else if (!bayat && d.sayfa && d.sayfa !== 'atama') h += '<div class="serit sari">Bilgisayarda Operasyon Merkezi sayfası açık değil; talepler izlenmiyor olabilir.</div>';
 
+    // SOS (v9.30 özeti): Özet'in ve Operasyon'un en üstünde. Durum değişikliği komutla, eklenti siteye yazar.
+    const sosList = Array.isArray(d.sos) ? d.sos : [];
+    const telA = (t, yazi) => (t ? '<a class="tel" href="tel:' + esc(String(t).replace(/[^\d+]/g, '')) + '">' + yazi + '</a>' : '');
+    let sosH = '';
+    if (sosList.length) {
+      sosH += '<div class="kart sos-kart"><h2>🆘 SOS <span>' + sosList.length + ' kayıt</span></h2>';
+      sosList.forEach((x) => {
+        const bek = S.komutlar.find((k) => k.tur === 'sos_durum' && String(k.ilan_id) === String(x.id) && k.durum === 'bekliyor');
+        const aktifMi = x.durum === 'Aktif';
+        sosH += '<div class="sos-satir"><b>SOS #' + esc(x.id) + (x.is_id ? ' · iş #' + esc(x.is_id) : '') + ' <span class="rozet ' + (aktifMi ? 'r-acil' : 'r-uyari') + '">' + esc(x.durum || '?') + '</span></b>' +
+          '<small>' + (x.zaman ? trSaat(x.zaman) + ' · ' : '') + 'Bildiren: ' + esc(x.bildiren || '-') + (x.kullanici_tipi ? ' (' + esc(x.kullanici_tipi) + ')' : '') +
+          (x.musteri ? ' · Müşteri: ' + esc(x.musteri) : '') + (x.sofor ? ' · Şoför: ' + esc(x.sofor) : '') + '</small>' +
+          (x.neden ? '<p>' + esc(x.neden) + '</p>' : '') +
+          '<div class="sos-dugme">' + telA(x.bildiren_tel, '📞 Bildiren') + telA(x.musteri_tel, '📞 Müşteri') + telA(x.sofor_tel, '📞 Şoför') +
+          (sayiMi(x.enlem) && sayiMi(x.boylam) ? '<a class="tel" href="https://www.google.com/maps?q=' + (+x.enlem) + ',' + (+x.boylam) + '" target="_blank" rel="noopener">📍 Konum</a>' : '') + '</div>' +
+          (bek ? '<span class="rozet r-gri">güncelleniyor…</span>' : '<div class="ikili">' +
+            (aktifMi ? '<button class="btn" data-sos="' + esc(x.id) + '" data-sosd="İnceleniyor">🔎 İnceleniyor</button>' : '') +
+            '<button class="btn kirmizi" data-sos="' + esc(x.id) + '" data-sosd="Çözüldü">✅ Çözüldü</button></div>') + '</div>';
+      });
+      sosH += '</div>';
+    }
+
     // Bölümler: §ad§ işaretinden sonrası o sekmeye ait; işaretten öncesi (başlık + uyarı şeritleri) her sekmede görünür
     h += '§ozet§';
+    h += sosH;
     // Ana durum kartı
     const enEski = aktif[0];
     const al = d.alarm || {};
@@ -207,6 +230,7 @@
 
     // Talepler
     h += '§talep§';
+    h += sosH;
     h += '<div class="kart"><h2>Atama bekleyen talepler <span>' + e.soft + ' · ' + e.alarm + ' · ' + e.acil + ' dk</span></h2>';
     if (!talepler.length) h += '<div class="bos">Bekleyen talep yok.</div>';
     talepler.forEach((t, i) => {
@@ -221,6 +245,34 @@
         (kom ? '<span class="rozet r-gri">atanıyor…</span>' : '<button class="atabtn" data-ata="' + i + '">Şoför ata</button>') + '</div>';
     });
     h += '</div>';
+
+    // Aktif yolculuklar ve ileri rezervasyonlar (v9.30 özeti; eski eklentide bu alanlar yok → kart çıkmaz)
+    const guz = (x) => esc(yerYaz(x.nereden)) + ' → ' + esc(yerYaz(x.nereye));
+    if (Array.isArray(d.isler)) {
+      h += '<div class="kart"><h2>Aktif yolculuklar <span>' + d.isler.length + '</span></h2>';
+      if (!d.isler.length) h += '<div class="bos">Şu an aktif yolculuk yok.</div>';
+      d.isler.forEach((j) => {
+        h += '<div class="satir"><div class="ad">İş #' + esc(j.id) + ' · ' + guz(j) +
+          '<small>' + esc(j.durum || '-') + ' · Şoför: ' + esc(j.sofor || '-') + ' · Müşteri: ' + esc(j.musteri || '-') + (j.tutar ? ' · ' + esc(j.tutar) + ' TL' : '') + '</small></div>' +
+          telA(j.sofor_tel, 'Şoför') + telA(j.musteri_tel, 'Müşteri') + '</div>';
+      });
+      h += '</div>';
+    }
+    if (Array.isArray(d.rezervasyonlar)) {
+      const rz = d.rezervasyonlar.slice().sort((a, b) => (a.zaman || 9e15) - (b.zaman || 9e15));
+      const atanmamis = rz.filter((r) => !r.sofor_id).length;
+      h += '<div class="kart"><h2>İleri rezervasyonlar <span>' + rz.length + (atanmamis ? ' · ' + atanmamis + ' atanmamış' : '') + '</span></h2>';
+      if (!rz.length) h += '<div class="bos">İleri rezervasyon yok.</div>';
+      rz.forEach((r) => {
+        const kalan = r.zaman ? r.zaman - now : null;
+        const gun = r.zaman ? new Date(r.zaman).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', weekday: 'short' }) + ' ' + trSaat(r.zaman) : '-';
+        const acil = !r.sofor_id && kalan !== null && kalan < 2 * 3600000;
+        h += '<div class="satir"><div class="ad">' + esc(gun) + ' · ' + guz(r) +
+          '<small>#' + esc(r.id) + ' · Müşteri: ' + esc(r.musteri || '-') + (r.tutar ? ' · ' + esc(r.tutar) + ' TL' : '') + (r.sofor_id ? ' · Şoför: ' + esc(r.sofor || '#' + r.sofor_id) : '') + '</small></div>' +
+          (r.sofor_id ? '<span class="rozet r-ok">atandı</span>' : '<span class="rozet ' + (acil ? 'r-acil' : 'r-uyari') + '">atanmamış</span>') + '</div>';
+      });
+      h += '</div>';
+    }
 
     // Ödemeler
     if (odSayi) {
@@ -296,7 +348,7 @@
     if (son.length) {
       h += '<div class="kart"><h2>Son işlemler</h2>';
       son.forEach((k) => {
-        const ne = k.tur === 'ata' ? 'şoför atama' : k.tur === 'gordum' ? '"Gördüm"' : k.tur === 'destek_cevap' ? 'destek cevabı #' + esc(k.ilan_id) : '"İlgileniyorum"';
+        const ne = k.tur === 'ata' ? 'şoför atama' : k.tur === 'sos_durum' ? 'SOS #' + esc(k.ilan_id) + ' → ' + esc(k.metin || '') : k.tur === 'gordum' ? '"Gördüm"' : k.tur === 'destek_cevap' ? 'destek cevabı #' + esc(k.ilan_id) : '"İlgileniyorum"';
         const sonuc = k.durum === 'tamam' ? '✅' : k.durum === 'hata' ? '❌ ' + esc(k.mesaj || '') : '⏳ bekliyor';
         h += '<div class="kom"><b>' + esc(k.kim) + '</b> · ' + ne + ' · ' + trSaat(Date.parse(k.olusturma)) + ' · ' + sonuc + '</div>';
       });
@@ -321,7 +373,7 @@
     const sekmeler = [
       ['ozet', '🏠', 'Özet', yap.length],
       ['harita', '🗺️', 'Harita', 0],
-      ['talep', '🚗', 'Talepler', aktif.length],
+      ['talep', '🚗', 'Operasyon', sosList.length ? 'SOS' : aktif.length],
       ['destek', '💬', 'Destek', destek.length + bakilmamis],
       ['karne', '📊', 'Karne', kOkunmadi ? '!' : 0]
     ];
@@ -330,7 +382,14 @@
 
     const eskiHarita = S.haritaEl && S.haritaEl.parentNode ? S.haritaEl.parentNode.removeChild(S.haritaEl) : S.haritaEl;
     $('uygulama').innerHTML = goster;
-    if (window.L && $('haritaYer')) haritaCiz(talepler, soforler, e, eskiHarita, musait);
+    if (window.L && $('haritaYer')) haritaCiz(talepler, soforler, e, eskiHarita, musait, sosList);
+    document.querySelectorAll('[data-sos]').forEach((b) => {
+      b.onclick = () => {
+        const durum = b.dataset.sosd;
+        if (durum === 'Çözüldü' && !confirm('SOS #' + b.dataset.sos + ' çözüldü olarak kapatılsın mı?')) return;
+        komutGonder({ tur: 'sos_durum', ilan_id: String(b.dataset.sos), metin: durum }, b, 'SOS #' + b.dataset.sos);
+      };
+    });
     document.querySelectorAll('[data-kom]').forEach((b) => { b.onclick = () => komutGonder({ tur: b.dataset.kom }, b); });
     document.querySelectorAll('[data-ata]').forEach((b) => { b.onclick = () => ataAc(talepler[+b.dataset.ata]); });
     document.querySelectorAll('[data-detay]').forEach((b) => { b.onclick = () => talepDetay(talepler[+b.dataset.detay], musait); });
@@ -405,7 +464,7 @@
   }
 
   /* ---------------- harita ---------------- */
-  function haritaCiz(talepler, soforler, e, el, musait) {
+  function haritaCiz(talepler, soforler, e, el, musait, sosList) {
     if (!el) {
       el = document.createElement('div');
       el.id = 'harita';
@@ -437,6 +496,12 @@
       m.on('click', () => talepDetay(t, musait));
       kat.addLayer(m);
       noktalar.push([+t.nereden.enlem, +t.nereden.boylam]);
+    });
+    (sosList || []).filter((x) => sayiMi(x.enlem) && sayiMi(x.boylam)).forEach((x) => {
+      const m = L.circleMarker([+x.enlem, +x.boylam], { radius: 14, color: '#fff', weight: 3, fillColor: '#ff1f3d', fillOpacity: 1, className: 'sos-nokta' })
+        .bindTooltip('🆘 SOS #' + esc(x.id) + ' · ' + esc(x.durum || ''), { direction: 'top', permanent: true });
+      kat.addLayer(m);
+      noktalar.push([+x.enlem, +x.boylam]);
     });
     // İlk açılışta (ya da nokta sayısı değişince) tümünü sığdır; kullanıcı yakınlaştırdıysa bozma
     const imza = noktalar.length;
@@ -774,7 +839,7 @@
     const kayit = Object.assign({ kim: S.ekip.ad }, k);
     const { error } = await S.db.from('komutlar').insert(kayit);
     if (error) { bildir('Gönderilemedi: ' + error.message); if (btn) btn.disabled = false; return; }
-    bildir(k.tur === 'ata' ? ad + ' için atama gönderildi, bilgisayar yapıyor…' : k.tur === 'destek_cevap' ? ad + ' için cevap gönderiliyor…' : k.tur === 'gordum' ? 'Alarm susturuluyor…' : 'Ekibe bildirildi');
+    bildir(k.tur === 'ata' ? ad + ' için atama gönderildi, bilgisayar yapıyor…' : k.tur === 'destek_cevap' ? ad + ' için cevap gönderiliyor…' : k.tur === 'sos_durum' ? ad + ': "' + k.metin + '" gönderildi, bilgisayar yapıyor…' : k.tur === 'gordum' ? 'Alarm susturuluyor…' : 'Ekibe bildirildi');
     if (Date.now() - S.guncelleme > C.bayatSn * 1000) bildir('Uyarı: şu an veri gelmiyor, işlemi yapacak açık bilgisayar olmayabilir.');
     komutlariYukle();
   }
@@ -842,6 +907,12 @@
     S.guncelleme = n - 8000;
     S.durum = {
       v: 1, at: n - 8000, merkez: 'Ofis bilgisayarı', sayfa: 'atama', esikler: { soft: 3, alarm: 5, acil: 10 },
+      sos: [{ id: 12, is_id: 345, durum: 'Aktif', zaman: n - 4 * dk, bildiren: 'Ayşe K.', bildiren_tel: '+905550000009', kullanici_tipi: 'Üye', musteri: 'Ayşe K.', musteri_tel: '+905550000009', sofor: 'Ali K.', sofor_tel: '+905550000002', neden: 'Araç arızalandı', enlem: 37.9, boylam: 27.3 }],
+      isler: [{ id: 345, durum: 'Yolculukta', musteri: 'Ayşe K.', musteri_tel: '+905550000009', sofor: 'Ali K.', sofor_tel: '+905550000002', sofor_id: 2, tutar: '950', nereden: { ilce: 'Kuşadası', il: 'Aydın' }, nereye: { ilce: 'Selçuk', il: 'İzmir' } }],
+      rezervasyonlar: [
+        { id: 77, zaman: n + 90 * dk, musteri: 'Can T.', sofor_id: null, sofor: '', tutar: '1200', nereden: { ilce: 'Didim' }, nereye: { ilce: 'Bodrum' } },
+        { id: 78, zaman: n + 26 * 60 * dk, musteri: 'Ece D.', sofor_id: 1, sofor: 'Mehmet Y.', tutar: '800', nereden: { ilce: 'Kuşadası' }, nereye: { ilce: 'Söke' } }
+      ],
       talepler: [
         { tip: 'anlik', id: 153, olusma: n - 11 * dk, nereden: { ilce: 'Kuşadası', il: 'Aydın', enlem: 37.8575, boylam: 27.261 }, nereye: { ilce: 'Adnan Menderes Havalimanı', il: 'İzmir' }, tutar: '1.850' },
         { tip: 'anlik', id: 154, olusma: n - 6 * dk, nereden: { ilce: 'Selçuk', il: 'İzmir', enlem: 37.95, boylam: 27.37 }, nereye: { ilce: 'Kuşadası Limanı', il: 'Aydın' } },

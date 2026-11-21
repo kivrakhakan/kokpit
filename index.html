@@ -113,6 +113,10 @@ input{width:100%;padding:13px 12px;border-radius:10px;border:1px solid var(--ciz
 .bildirim{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2b303b;color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;z-index:10;max-width:90vw;opacity:0;transition:opacity .2s;pointer-events:none}
 .bildirim.goster{opacity:1}
 .etiket{position:fixed;top:8px;right:8px;background:var(--sari);color:#111;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;z-index:5}
+.sos-kart{border:2px solid var(--kirmizi);background:#2a1216}.sos-satir{padding:10px 0;border-top:1px solid #ffffff14}.sos-satir:first-of-type{border-top:0}
+.sos-satir b{display:block;font-size:15px}.sos-satir small{display:block;color:var(--soluk);margin-top:3px}.sos-satir p{margin:6px 0}
+.sos-dugme{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0 8px}.sos-satir .ikili{margin-top:6px}
+.sos-nokta{animation:sosYan 1s infinite alternate}@keyframes sosYan{from{opacity:1}to{opacity:.45}}
 </style>
 </head>
 <body>
@@ -122,6 +126,6 @@ input{width:100%;padding:13px 12px;border-radius:10px;border:1px solid var(--ciz
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js?v=20261119"></script>
-<script src="app.js?v=20261120b"></script>
+<script src="app.js?v=20261122a"></script>
 </body>
 </html>
