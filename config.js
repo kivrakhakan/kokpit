@@ -2,6 +2,6 @@
 window.SB_CONFIG = {
   url: 'https://yajzvvvygskkhbvxghrc.supabase.co',
   key: 'sb_publishable_T4cQ2CNu5pLa6Df9HUmkcg_3eH-AzZ_',
-  logo: 'https://soforbey.com/static/img/ikon.png',
+  logo: 'kokpit-logo.png',   // ŞB Kokpit simgesi: gözlü "Sade" logo (2026-11-22)
   bayatSn: 90           // eklentiden bu kadar sn veri gelmezse "izleme kapalı"
 };

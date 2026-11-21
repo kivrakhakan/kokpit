@@ -9,8 +9,11 @@
   const DEMO = /[?&]demo=1/.test(location.search);
   // Panelin "Yenilikler" kartı (her yeni sürümde surum değişir, maddeler yenilenir)
   const YENILIK = {
-    surum: '2026-11-22', tarih: '22 Kasım',
+    surum: '2026-11-22b', tarih: '22 Kasım',
     maddeler: [
+      ['Kepli Bey geldi. ', 'Logomuzdan doğan maskot: her şey yolundayken gülümser, SOS\'ta telaşlanır, izleme kapanınca uyur.'],
+      ['Yeni Şoförler sekmesi. ', 'Bekleyen ehliyet yenilemeleri, şoförlerin anlık durumu, başvurular ve şoför kayıtları (eksik belgeler) tek yerde. Onay ve düzenleme yine sitede yapılır.'],
+      ['Yeni ikonlar her yerde. ', '"Kontrol et" listesi, SOS kartı ve talep önerilerindeki emojiler yerine panelin kendi çizgi ikonları geldi.'],
       ['Yeni görünüm. ', 'Şoför Bey yeşili, logodan çizilmiş menü ikonları. Telefon gece modundaysa panel de koyu açılır.'],
       ['Operasyon sekmesi. ', 'SOS bildirimleri, aktif yolculuklar ve ileri rezervasyonlar burada. SOS\'u "İnceleniyor" ya da "Çözüldü" yapabilirsiniz.'],
       ['Haritada SOS. ', 'SOS bildirilen yer haritada kırmızı nokta olarak görünür.'],
@@ -39,6 +42,23 @@
   }
   const kmYaz = (k) => (k < 10 ? k.toFixed(1).replace('.', ',') : String(Math.round(k))) + ' km';
   const sayiMi = (v) => v !== null && v !== undefined && v !== '' && !isNaN(+v);
+  const ikon = (ad) => '<svg aria-hidden="true"><use href="#i-' + ad + '"/></svg>';
+  // Maskot "Kepli Bey" (logodan: noktalar göz, kemer omuz, ok gövde). Pozlar: yolunda, sos, bekliyor, uyku.
+  const maskot = (poz) => {
+    const gece = poz === 'uyku';
+    const kep = '<use href="#m-kep" fill="' + (gece ? '#00b621' : '#0a5a1c') + '"' + (poz === 'sos' ? ' transform="translate(0 -8)"' : gece ? ' transform="rotate(-12 120 30)"' : '') + '/>';
+    const goz = (cx, bx, by, r) => '<g class="m-goz"><circle cx="' + cx + '" cy="74" r="' + (r || 17) + '" fill="#fff"/><circle cx="' + bx + '" cy="' + by + '" r="6.5" fill="#13261a"/></g>';
+    const yuz = {
+      yolunda: '<path d="M79 80 Q94 62 109 80M131 80 Q146 62 161 80" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M104 96 Q120 116 136 96 Z" fill="#13261a" stroke="#13261a" stroke-width="3" stroke-linejoin="round"/>',
+      sos: '<circle cx="94" cy="76" r="20" fill="#fff"/><circle cx="94" cy="76" r="5" fill="#13261a"/><circle cx="146" cy="76" r="20" fill="#fff"/><circle cx="146" cy="76" r="5" fill="#13261a"/><ellipse cx="120" cy="106" rx="7" ry="9" fill="#13261a"/>',
+      bekliyor: goz(94, 89, 68) + goz(146, 141, 68) + '<path d="M110 100 H130" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>',
+      uyku: '<path d="M80 76 Q94 88 108 76M132 76 Q146 88 160 76" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><circle cx="120" cy="102" r="5" fill="#13261a"/><text x="180" y="62" font-size="26" font-weight="800" fill="#fff" font-family="Barlow,sans-serif">z</text>'
+    }[poz] || '';
+    return '<svg class="maskot" viewBox="0 0 240 240" aria-hidden="true"><rect width="240" height="240" fill="' + (gece ? '#06401a' : '#00b621') + '"/>' +
+      '<g transform="translate(18 14) scale(.85)">' + kep + yuz + '<use href="#m-govde"/></g></svg>';
+  };
+  const maskotBos = (poz, baslik, alt) => '<div class="maskot-bos">' + maskot(poz) + '<b>' + esc(baslik) + '</b>' + (alt ? '<span>' + esc(alt) + '</span>' : '') + '</div>';
+  const ik = (ad) => '<svg class="ik" aria-hidden="true"><use href="#i-' + ad + '"/></svg>'; // yazı içi ikon (eski emojilerin yerine)
   let bildTimer = 0;
   function bildir(t) {
     const b = $('bildirim');
@@ -133,7 +153,6 @@
     let h = '';
     if (DEMO) h += '<div class="etiket">DEMO · örnek veri</div>';
     const sosList = Array.isArray(d.sos) ? d.sos : [];
-    const ikon = (ad) => '<svg aria-hidden="true"><use href="#i-' + ad + '"/></svg>';
     // Üst yeşil bant (logodaki kemerle biter). SOS varsa beyaz şerit bandın içinde; Operasyon'da kartın kendisi görünür.
     h += '<div class="bant"><header><img class="logo" src="' + LOGO + '" alt="Şoför Bey"><div><h1>Kokpit</h1><small>' +
       esc(S.ekip ? S.ekip.ad : '') + (d.merkez ? ', kaynak ' + esc(d.merkez) : '') + '</small></div>' +
@@ -168,7 +187,7 @@
     const telA = (t, yazi) => (t ? '<a class="tel" href="tel:' + esc(String(t).replace(/[^\d+]/g, '')) + '">' + yazi + '</a>' : '');
     let sosH = '';
     if (sosList.length) {
-      sosH += '<div class="kart sos-kart"><h2>🆘 SOS <span>' + sosList.length + ' kayıt</span></h2>';
+      sosH += '<div class="kart sos-kart"><h2><b class="sos-bas">' + maskot('sos') + 'SOS</b><span>' + sosList.length + ' kayıt</span></h2>';
       sosList.forEach((x) => {
         const bek = S.komutlar.find((k) => k.tur === 'sos_durum' && String(k.ilan_id) === String(x.id) && k.durum === 'bekliyor');
         const aktifMi = x.durum === 'Aktif';
@@ -176,11 +195,11 @@
           '<small>' + (x.zaman ? trSaat(x.zaman) + ' · ' : '') + 'Bildiren: ' + esc(x.bildiren || '-') + (x.kullanici_tipi ? ' (' + esc(x.kullanici_tipi) + ')' : '') +
           (x.musteri ? ' · Müşteri: ' + esc(x.musteri) : '') + (x.sofor ? ' · Şoför: ' + esc(x.sofor) : '') + '</small>' +
           (x.neden ? '<p>' + esc(x.neden) + '</p>' : '') +
-          '<div class="sos-dugme">' + telA(x.bildiren_tel, '📞 Bildiren') + telA(x.musteri_tel, '📞 Müşteri') + telA(x.sofor_tel, '📞 Şoför') +
-          (sayiMi(x.enlem) && sayiMi(x.boylam) ? '<a class="tel" href="https://www.google.com/maps?q=' + (+x.enlem) + ',' + (+x.boylam) + '" target="_blank" rel="noopener">📍 Konum</a>' : '') + '</div>' +
+          '<div class="sos-dugme">' + telA(x.bildiren_tel, ik('tel') + 'Bildiren') + telA(x.musteri_tel, ik('tel') + 'Müşteri') + telA(x.sofor_tel, ik('tel') + 'Şoför') +
+          (sayiMi(x.enlem) && sayiMi(x.boylam) ? '<a class="tel" href="https://www.google.com/maps?q=' + (+x.enlem) + ',' + (+x.boylam) + '" target="_blank" rel="noopener">' + ik('harita') + 'Konum</a>' : '') + '</div>' +
           (bek ? '<span class="rozet r-gri">güncelleniyor…</span>' : '<div class="ikili">' +
-            (aktifMi ? '<button class="btn" data-sos="' + esc(x.id) + '" data-sosd="İnceleniyor">🔎 İnceleniyor</button>' : '') +
-            '<button class="btn kirmizi" data-sos="' + esc(x.id) + '" data-sosd="Çözüldü">✅ Çözüldü</button></div>') + '</div>';
+            (aktifMi ? '<button class="btn" data-sos="' + esc(x.id) + '" data-sosd="İnceleniyor">' + ik('ara') + 'İnceleniyor</button>' : '') +
+            '<button class="btn kirmizi" data-sos="' + esc(x.id) + '" data-sosd="Çözüldü">' + ik('tamam') + 'Çözüldü</button></div>') + '</div>';
       });
       sosH += '</div>';
     }
@@ -206,28 +225,30 @@
       h += '<div class="durum ana"><span class="bekleme">Ödemeler</span><b>' + odSayi + ' ödeme onay bekliyor</b><p>Ödemeler sayfasından onaylayın.</p>' +
         '<div class="ikili"><button class="btn saydam" data-kom="gordum">Gördüm</button><button class="btn beyaz" data-kom="ilgileniyorum">İlgileniyorum</button></div></div>';
     } else {
-      h += '<div class="durum ana sakin"><b>Her şey yolunda</b><p>Bekleyen talep ve ödeme yok.</p></div>';
+      h += (!S.guncelleme || bayat)
+        ? '<div class="durum ana sakin uyuyor">' + maskot('uyku') + '<div><b>İzleme kapalı</b><p>Bilgisayardaki eklentiden haber gelmiyor.</p></div></div>'
+        : '<div class="durum ana sakin">' + maskot('yolunda') + '<div><b>Her şey yolunda</b><p>Bekleyen talep ve ödeme yok.</p></div></div>';
     }
 
     // Admin panelde bakılması gerekenler (dokununca ilgili sayfa açılır)
     const say = d.sayilar || {};
     const yap = [];
-    if (!bayat && d.sayfa === 'logout') yap.push(['🔑', 'Bilgisayardaki panel oturumu kapanmış: tekrar giriş yap', 'admin/']);
-    if (+say.aktif_sos > 0 && !sosList.length) yap.push(['🆘', say.aktif_sos + ' SOS bildirimi var', 'admin/operasyon-merkezi']);
-    if (odSayi) yap.push(['💳', odSayi + ' ödeme onay bekliyor', 'admin/odemeler']);
-    if (aktif.some((t) => t.yasDk >= e.acil)) yap.push(['🚗', 'ACİL: ' + aktif.filter((t) => t.yasDk >= e.acil).length + ' talep ' + e.acil + ' dk\'dan uzun süredir şoför bekliyor', 'admin/operasyon-merkezi']);
-    if (aktif.length && !musait.length) yap.push(['⚠', 'Müsait şoför yok; şoförleri arayın', 'admin/soforler']);
-    if (+say.incelenen_sos > 0 && !sosList.length) yap.push(['🔎', say.incelenen_sos + ' SOS incelemede', 'admin/operasyon-merkezi']);
+    if (!bayat && d.sayfa === 'logout') yap.push(['anahtar', 'Bilgisayardaki panel oturumu kapanmış: tekrar giriş yap', 'admin/']);
+    if (+say.aktif_sos > 0 && !sosList.length) yap.push(['uyari', say.aktif_sos + ' SOS bildirimi var', 'admin/operasyon-merkezi']);
+    if (odSayi) yap.push(['kart', odSayi + ' ödeme onay bekliyor', 'admin/odemeler']);
+    if (aktif.some((t) => t.yasDk >= e.acil)) yap.push(['arac', 'ACİL: ' + aktif.filter((t) => t.yasDk >= e.acil).length + ' talep ' + e.acil + ' dk\'dan uzun süredir şoför bekliyor', 'admin/operasyon-merkezi']);
+    if (aktif.length && !musait.length) yap.push(['uyari', 'Müsait şoför yok; şoförleri arayın', 'admin/soforler']);
+    if (+say.incelenen_sos > 0 && !sosList.length) yap.push(['ara', say.incelenen_sos + ' SOS incelemede', 'admin/operasyon-merkezi']);
     const basv = Array.isArray(d.basvurular) ? d.basvurular : [];
     // "Cevap gerekmiyor" işaretlenenler kişi yeniden yazana kadar gizli (anahtar son mesaja bağlı)
     const destek = (Array.isArray(d.destek) ? d.destek : []).filter((t) => !S.tikler[destekAnahtar(t)]);
-    if (destek.length) yap.push(['💬', destek.length + ' destek talebi cevap bekliyor', '#destek']);
-    if (S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1) yap.unshift(['📊', 'Haftalık rapor hazır: okuyup "Okudum" de', '#karne']);
+    if (destek.length) yap.push(['destek', destek.length + ' destek talebi cevap bekliyor', '#destek']);
+    if (S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1) yap.unshift(['karne', 'Haftalık rapor hazır: okuyup "Okudum" de', '#karne']);
     const bakilmamis = basv.filter((b) => !S.tikler[String(b.no)]).length;
-    if (bakilmamis) yap.push(['📝', bakilmamis + ' şoför başvurusuna henüz bakılmadı', 'admin/sofor-basvurulari']);
+    if (bakilmamis) yap.push(['belge', bakilmamis + ' şoför başvurusuna henüz bakılmadı', 'admin/sofor-basvurulari']);
     if (yap.length) {
       h += '<div class="kart"><h2>Kontrol et <span>' + yap.length + ' iş</span></h2>' + yap.map((y) =>
-        (y[2] === '#karne' ? '<a class="satir yap" href="#" data-sekme="karne">' : y[2] === '#destek' ? '<a class="satir yap" href="#" data-sekme="destek">' : '<a class="satir yap" href="' + ADMIN + y[2] + '" target="_blank" rel="noopener">') + '<span style="font-size:18px">' + y[0] + '</span><div class="ad">' + esc(y[1]) + '</div><span class="ok">›</span></a>').join('') + '</div>';
+        (y[2] === '#karne' ? '<a class="satir yap" href="#" data-sekme="karne">' : y[2] === '#destek' ? '<a class="satir yap" href="#" data-sekme="destek">' : '<a class="satir yap" href="' + ADMIN + y[2] + '" target="_blank" rel="noopener">') + ik(y[0]) + '<div class="ad">' + esc(y[1]) + '</div><span class="ok">›</span></a>').join('') + '</div>';
     }
 
     h += '<div class="sayilar">' +
@@ -250,7 +271,7 @@
     h += '§talep§';
     h += sosH;
     h += '<div class="kart"><h2>Atama bekleyen talepler <span>' + e.soft + ' · ' + e.alarm + ' · ' + e.acil + ' dk</span></h2>';
-    if (!talepler.length) h += '<div class="bos">Bekleyen talep yok.</div>';
+    if (!talepler.length) h += maskotBos('yolunda', 'Bekleyen talep yok', 'Yeni talep gelince burada görünür.');
     talepler.forEach((t, i) => {
       const sv = seviye(t.yasDk, e);
       const yuzde = Math.min(100, (t.yasDk / e.acil) * 100);
@@ -303,9 +324,21 @@
       h += '</div>';
     }
 
-    // Şoförler
+    // Şoförler sekmesi: ehliyet yenilemeleri, anlık durum, başvurular, kayıtlar (yalnızca görüntüleme; işlem sitede)
+    h += '§sofor§';
+    const sk = d.sofor_kayit && typeof d.sofor_kayit === 'object' ? d.sofor_kayit : null;
+    const ehl = sk && Array.isArray(sk.ehliyet) ? sk.ehliyet : [];
+    const skOku = sk && sk.at ? ' · ' + sure(now - sk.at) + ' önce okundu' : '';
+    if (ehl.length) {
+      h += '<div class="kart"><h2>Ehliyet yenileme <span>' + ehl.length + ' onay bekliyor</span></h2>';
+      ehl.forEach((x) => {
+        h += '<a class="satir yap" href="' + ADMIN + 'admin/soforler" target="_blank" rel="noopener">' + ik('belge') + '<div class="ad">' + esc(x.ad || 'Şoför') +
+          '<small>#' + esc(x.no) + ' · ' + esc(x.mevcut || '?') + ' → <b>' + esc(x.yeni || '?') + '</b> · talep ' + esc(x.talep || '') + '</small></div><span class="ok">›</span></a>';
+      });
+      h += '<div class="bos" style="padding-top:6px">Onay ve red sitede yapılır; satıra dokununca açılır.</div></div>';
+    }
     const sira = { 'Müsait': 0, 'Meşgul': 1 };
-    h += '<div class="kart"><h2>Şoförler <span>' + musait.length + ' müsait / ' + soforler.length + '</span></h2>';
+    h += '<div class="kart"><h2>Anlık durum <span>' + musait.length + ' müsait / ' + soforler.length + '</span></h2>';
     if (!soforler.length) h += '<div class="bos">Şoför bilgisi yok.</div>';
     const sfSira = soforler.slice().sort((a, b) => (sira[a.durum] ?? 2) - (sira[b.durum] ?? 2));
     sfSira.forEach((s, i) => {
@@ -318,7 +351,7 @@
 
     // Destek talepleri (son mesajı kişinin yazdığı = cevap bekleyen)
     h += '§destek§';
-    if (!destek.length && !basv.length) h += '<div class="kart"><div class="bos">Cevap bekleyen destek talebi ya da başvuru yok. 👍</div></div>';
+    if (!destek.length) h += '<div class="kart">' + maskotBos('yolunda', 'Cevap bekleyen destek talebi yok') + '</div>';
     if (destek.length) {
       h += '<div class="kart" id="destekKart"><h2>Destek talepleri <span>' + destek.length + ' cevap bekliyor</span></h2>';
       destek.forEach((t, i) => {
@@ -331,7 +364,8 @@
       h += '</div>';
     }
 
-    // Şoför başvuruları (yalnızca bekleyenler; onay/ret admin panelden)
+    // Şoför başvuruları (yalnızca bekleyenler; onay/ret admin panelden) — Şoförler sekmesinde
+    h += '§sofor§';
     if (basv.length) {
       const gun = (b) => { const m = String(b.tarih || '').match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/); return m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') : '?'; };
       const trGun = (ms) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
@@ -359,6 +393,23 @@
       });
       h += '</div>';
     }
+
+    // Şoför kayıtları (soforbey.com /admin/soforler): eksik belgeler önce
+    const kay = sk && Array.isArray(sk.kayitlar) ? sk.kayitlar : [];
+    const eksikler = (k) => (k.belgeler || []).filter((b) => !b.var).map((b) => b.ad);
+    h += '<div class="kart"><h2>Şoför kayıtları <span>' + kay.length + skOku + '</span></h2>';
+    if (!sk) h += maskotBos('bekliyor', 'Kayıtlar henüz gelmedi', 'Bilgisayardaki eklenti 5 dakikada bir okur.');
+    kay.slice().sort((a, b) => eksikler(b).length - eksikler(a).length).forEach((k) => {
+      const ek = eksikler(k);
+      const tel = String(k.tel || '').replace(/[^\d+]/g, '');
+      h += '<div class="sf"><span class="nokta" style="background:' + (ek.length ? 'var(--sari)' : 'var(--yesil)') + '"></span><div class="ad">' + esc(k.ad || 'Şoför') +
+        '<small>#' + esc(k.no) + ' · ' + esc(k.arac || '?') + (k.durum && k.durum !== 'Aktif' ? ' · ' + esc(k.durum) : '') + '</small>' +
+        '<small style="color:' + (ek.length ? 'var(--sari)' : 'var(--yesil)') + '">' + (ek.length ? 'Eksik: ' + esc(ek.join(', ')) : 'Belgeler tamam') + '</small>' +
+        (k.edevlet ? '<small>e-Devlet: ' + esc(k.edevlet) + (k.edevlet_kontrol ? ' · ' + esc(k.edevlet_kontrol) : '') + '</small>' : '') + '</div>' +
+        (tel ? '<a class="tel" href="tel:' + esc(tel) + '">' + ik('tel') + 'Ara</a>' : '') + '</div>';
+    });
+    if (sk) h += '<a class="satir yap" href="' + ADMIN + 'admin/soforler" target="_blank" rel="noopener">' + ik('belge') + '<div class="ad">Belgeleri ve düzenlemeyi sitede aç</div><span class="ok">›</span></a>';
+    h += '</div>';
 
     // Son işlemler (özet sekmesinde)
     h += '§ozet§';
@@ -392,7 +443,8 @@
       ['ozet', 'ozet', 'Özet', yap.length],
       ['harita', 'harita', 'Harita', 0],
       ['talep', 'op', 'Operasyon', sosList.length ? '!' : aktif.length],
-      ['destek', 'destek', 'Destek', destek.length + bakilmamis],
+      ['destek', 'destek', 'Destek', destek.length],
+      ['sofor', 'sofor', 'Şoförler', ehl.length + bakilmamis],
       ['karne', 'karne', 'Rapor', kOkunmadi ? '!' : 0]
     ];
     goster += '<nav class="altmenu">' + sekmeler.map((s) => '<button data-sekme="' + s[0] + '" class="' + (s[0] === B ? 'on' : '') + '"><span class="am-ik">' + ikon(s[1]) +
@@ -436,9 +488,9 @@
     if (!n || !sayiMi(n.enlem) || !sayiMi(n.boylam)) return '';
     const l = musait.filter((s) => sayiMi(s.enlem) && sayiMi(s.boylam))
       .map((s) => ({ s, k: km(+n.enlem, +n.boylam, +s.enlem, +s.boylam) })).sort((a, b) => a.k - b.k);
-    if (!l.length) return '📍 Konumu bilinen müsait şoför yok';
+    if (!l.length) return ik('harita') + 'Konumu bilinen müsait şoför yok';
     const eski = l[0].s.konum_ms && Date.now() - l[0].s.konum_ms > 30 * 60000;
-    return '📍 En yakın: ' + esc(l[0].s.ad) + ' ~' + kmYaz(l[0].k) + (l[0].s.konum_ms ? ' (konum ' + sure(Date.now() - l[0].s.konum_ms) + ' önce' + (eski ? ' ⚠' : '') + ')' : '');
+    return ik('harita') + 'En yakın: ' + esc(l[0].s.ad) + ' ~' + kmYaz(l[0].k) + (l[0].s.konum_ms ? ' (konum ' + sure(Date.now() - l[0].s.konum_ms) + ' önce' + (eski ? ' ⚠' : '') + ')' : '');
   }
 
   /* ---------------- detay pencereleri ---------------- */
@@ -466,7 +518,7 @@
       h += '<div class="kom" style="color:var(--soluk)">Müsait şoförler (yakından uzağa):</div>' + l.map((x) =>
         '<div class="kom"><b>' + esc(x.s.ad) + '</b> · ~' + kmYaz(x.k) + (x.s.konum_ms ? ' · konum ' + sure(Date.now() - x.s.konum_ms) + ' önce' : '') + '</div>').join('');
     }
-    h += '<div class="ikili" style="margin-top:12px"><a class="btn" style="text-align:center;text-decoration:none" href="' + harita(n) + '" target="_blank" rel="noopener">📍 Haritada aç</a>' +
+    h += '<div class="ikili" style="margin-top:12px"><a class="btn" style="text-align:center;text-decoration:none" href="' + harita(n) + '" target="_blank" rel="noopener">' + ik('harita') + 'Haritada aç</a>' +
       (t.id ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + ADMIN + 'admin/ilanlar/' + encodeURIComponent(t.tip || 'anlik') + '/' + encodeURIComponent(t.id) + '" target="_blank" rel="noopener">Admin\'de aç</a>' : '<span></span>') + '</div>';
     if (t.id) h += '<button class="btn yesil" id="detayAta" style="margin-top:8px">Şoför ata</button>';
     pencere(h);
@@ -477,8 +529,8 @@
     h += bilgi('Konum', s.konum_ms ? sure(Date.now() - s.konum_ms) + ' önce alındı' + (Date.now() - s.konum_ms > 30 * 60000 ? ' (eski olabilir)' : '') : 'bilinmiyor');
     h += bilgi('Telefon', s.telefon ? esc(s.telefon) : '');
     h += '<div class="ikili" style="margin-top:12px">' +
-      (sayiMi(s.enlem) ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + harita(s) + '" target="_blank" rel="noopener">📍 Haritada aç</a>' : '<span></span>') +
-      (s.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">📞 Ara</a>' : '<span></span>') + '</div>';
+      (sayiMi(s.enlem) ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + harita(s) + '" target="_blank" rel="noopener">' + ik('harita') + 'Haritada aç</a>' : '<span></span>') +
+      (s.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">' + ik('tel') + 'Ara</a>' : '<span></span>') + '</div>';
     pencere(h);
   }
 
@@ -803,7 +855,7 @@
     h += bilgi('SRC belgesi', b.src ? 'var' : 'yok');
     h += bilgi('Psikoteknik', b.psiko ? 'var' : 'yok');
     h += '<div class="ikili" style="margin-top:12px">' +
-      (b.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(b.telefon).replace(/[^\d+]/g, '')) + '">📞 Ara</a>' : '<span></span>') +
+      (b.telefon ? '<a class="btn mavi" style="text-align:center;text-decoration:none" href="tel:' + esc(String(b.telefon).replace(/[^\d+]/g, '')) + '">' + ik('tel') + 'Ara</a>' : '<span></span>') +
       '<a class="btn" style="text-align:center;text-decoration:none" href="' + ADMIN + 'admin/sofor-basvurulari" target="_blank" rel="noopener">Admin\'de aç</a></div>' +
       '<p class="alt" style="margin-top:10px">Onay ve ret admin panelden yapılır (belgeler orada).</p>';
     pencere(h);
@@ -952,6 +1004,15 @@
           { kim: 'kisi', metin: 'Şoför 20 dakika gecikti, ücret iadesi alabilir miyim?', zaman: '18.11.2026 21:05' }] }
       ],
       gunsonu: { tarih: '2026-11-18', metin: 'BUGÜN (18.11.2026 23:55, Türkiye saati)\nListeden çıkan (atanan/iptal) talep: 12\n10 dk üstü bekleyen: 1\nOrtalama bekleme: 4.2 dk, en uzun: 13 dk\n\nTOPLAM (46 talep)\nEn yoğun saatler: 9:00 (6), 15:00 (5), 8:00 (5)\nEn çok talep gelen alış bölgeleri: Kuşadası (21), Selçuk (9), Davutlar (6)' },
+      sofor_kayit: {
+        at: n - 3 * 60000,
+        ehliyet: [{ no: 7, ad: 'Ali K.', mevcut: '12.03.2026', yeni: '12.03.2036', talep: '21.11.2026 14:05' }],
+        kayitlar: [
+          { no: 7, ad: 'Ali K.', tel: '+90 5550000001', arac: 'Otomobil', durum: 'Aktif', belgeler: [{ ad: 'Ehliyet', var: true }, { ad: 'Adli Sicil', var: true }, { ad: 'İkametgah', var: true }, { ad: 'SRC', var: false }, { ad: 'Psikoteknik', var: false }], edevlet: 'Belge bulunmuyor', edevlet_kontrol: 'Henüz kontrol edilmedi' },
+          { no: 9, ad: 'Mehmet Y.', tel: '+90 5550000002', arac: 'Motosiklet', durum: 'Aktif', belgeler: [{ ad: 'Ehliyet', var: true }, { ad: 'Adli Sicil', var: true }, { ad: 'İkametgah', var: true }, { ad: 'SRC', var: true }, { ad: 'Psikoteknik', var: true }], edevlet: 'Belge bulunmuyor', edevlet_kontrol: 'Henüz kontrol edilmedi' },
+          { no: 12, ad: 'Hasan D.', tel: '', arac: 'Araç atanmamış', durum: 'Aktif', belgeler: [{ ad: 'Ehliyet', var: false }, { ad: 'Adli sicil', var: false }, { ad: 'İkametgah', var: false }, { ad: 'SRC', var: false }, { ad: 'Psikoteknik', var: false }], edevlet: 'Belge bulunmuyor', edevlet_kontrol: 'Henüz kontrol edilmedi' }
+        ]
+      },
       basvurular: [
         { no: 21, ad: 'Örnek Başvuran', durum: 'Beklemede', tarih: new Date(n - 2 * 3600000).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''), telefon: '+905550000009', arac: 'Otomobil', ehliyet_bitis: '2032-04-29', src: false, psiko: true },
         { no: 20, ad: 'İkinci Başvuran', durum: 'Beklemede', tarih: new Date(n - 3600000).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ''), arac: 'Otomobil, Minibüs', src: true, psiko: true },

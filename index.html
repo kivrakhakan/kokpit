@@ -193,6 +193,17 @@ a.tel{color:var(--mavi);font-weight:700}
 .altmenu button{color:var(--soluk);font-weight:600;font-size:11.5px;gap:1px;font-family:inherit}
 .altmenu button.on{background:none;color:var(--yazi);font-weight:700}
 .am-ik{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:0}
+svg.ik{width:1.15em;height:1.15em;vertical-align:-.2em;margin-right:.3em;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.maskot{display:block;width:84px;height:84px;margin:4px auto 8px;border-radius:24px;flex:none}
+.maskot-bos{text-align:center;padding:8px 0 4px}.maskot-bos b{display:block;font-size:16px;margin-bottom:2px}.maskot-bos span{color:var(--soluk);font-size:14px}
+.durum.ana.sakin{display:flex;align-items:center;gap:14px}.durum.ana.sakin .maskot{margin:0;width:76px;height:76px}.durum.ana.sakin p{margin:0}
+.durum.ana.uyuyor{background:#06401a;box-shadow:0 4px 0 #032611}
+.sos-bas .maskot{width:40px;height:40px;border-radius:12px;margin:0 8px 0 0}
+.m-goz{transform-box:fill-box;transform-origin:center;animation:mKirp 4.2s infinite}
+@keyframes mKirp{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@media (prefers-reduced-motion:reduce){.m-goz{animation:none}}
+.sos-bas{font:inherit;display:inline-flex;align-items:center}.sos-bas .ik{color:var(--kirmizi)}
+.satir.yap svg.ik{width:20px;height:20px;margin-right:0;color:var(--yesil,currentColor)}
 .am-ik svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
 .altmenu button.on .am-ik{background:var(--yesil);color:#fff;box-shadow:0 3px 0 var(--yol);transform:translateY(-3px)}
 .am-ik em{top:0;right:-2px;border:2px solid var(--menu)}
@@ -217,13 +228,23 @@ input,textarea{background:var(--kart);border-color:var(--cizgi)}
 <symbol id="i-uyari" viewBox="0 0 24 24"><path d="M12 2l10 18H2z"/></symbol>
 <symbol id="i-zil" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
 <symbol id="i-cikis" viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 8l-4 4 4 4M6 12h9"/></symbol>
+<symbol id="i-tel" viewBox="0 0 24 24"><path d="M5 4h3.5l1.5 4-2 1.5a11 11 0 0 0 6.5 6.5l1.5-2 4 1.5V19a1.5 1.5 0 0 1-1.5 1.5A16 16 0 0 1 3.5 5.5 1.5 1.5 0 0 1 5 4z"/></symbol>
+<symbol id="i-anahtar" viewBox="0 0 24 24"><circle cx="7.5" cy="16.5" r="3.5"/><path d="M10 14l9.5-9.5M16.5 7.5l2.5 2.5M14 10l2 2"/></symbol>
+<symbol id="i-kart" viewBox="0 0 24 24"><path d="M5 6h14a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 18H5a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 5 6zM3.5 10h17M7 14.5h3"/></symbol>
+<symbol id="i-arac" viewBox="0 0 24 24"><path d="M4 16.5V12l2.2-5h11.6L20 12v4.5zM4 12h16"/><circle cx="7.5" cy="16.5" r="1.6"/><circle cx="16.5" cy="16.5" r="1.6"/></symbol>
+<symbol id="i-ara" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/></symbol>
+<g id="m-govde"><path d="M48 180 A72 72 0 0 1 192 180 L152 180 A32 32 0 0 0 88 180 Z" fill="#fff"/><path d="M120 162 L170 222 Q173 230 164 228 L120 215 L76 228 Q67 230 70 222 Z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></g>
+<g id="m-kep"><path d="M76 36 Q120 4 164 36 Z"/><rect x="66" y="32" width="108" height="17" rx="8"/><circle cx="120" cy="24" r="4.5" fill="#fff"/></g>
+<symbol id="i-sofor" viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="3.5"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></symbol>
+<symbol id="i-tamam" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-belge" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6zM14 3.5v4h4M9 12.5h6M9 16h6"/></symbol>
 </defs></svg>
 <div id="uygulama" class="kap"></div>
 <div id="bildirim" class="bildirim"></div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261119"></script>
-<script src="app.js?v=20261122f"></script>
+<script src="config.js?v=20261122"></script>
+<script src="app.js?v=20261122i"></script>
 </body>
 </html>
