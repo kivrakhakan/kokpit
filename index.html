@@ -197,6 +197,12 @@ a.tel{color:var(--mavi);font-weight:700}
 .altmenu button.on .am-ik{background:var(--yesil);color:#fff;box-shadow:0 3px 0 var(--yol);transform:translateY(-3px)}
 .am-ik em{top:0;right:-2px;border:2px solid var(--menu)}
 input,textarea{background:var(--kart);border-color:var(--cizgi)}
+.kart.yenilik{position:relative;z-index:1;border:2px solid var(--yesil)}
+.yenilik ul{margin:4px 0 14px;padding:0;list-style:none}
+.yenilik li{position:relative;padding:7px 0 7px 18px;border-top:1px solid var(--cizgi);font-size:14px;line-height:1.45;color:var(--soluk)}
+.yenilik li:first-child{border-top:0}
+.yenilik li::before{content:"";position:absolute;left:2px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--yesil)}
+.yenilik li b{color:var(--yazi);font-weight:700}
 .giris h1{font-size:24px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -218,6 +224,6 @@ input,textarea{background:var(--kart);border-color:var(--cizgi)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js?v=20261119"></script>
-<script src="app.js?v=20261122e"></script>
+<script src="app.js?v=20261122f"></script>
 </body>
 </html>

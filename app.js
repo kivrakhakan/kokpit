@@ -7,6 +7,17 @@
   const ADMIN = 'https://soforbey.com/';
   const LOGO = C.logo || 'ikon-192.png';
   const DEMO = /[?&]demo=1/.test(location.search);
+  // Panelin "Yenilikler" kartı (her yeni sürümde surum değişir, maddeler yenilenir)
+  const YENILIK = {
+    surum: '2026-11-22', tarih: '22 Kasım',
+    maddeler: [
+      ['Yeni görünüm. ', 'Şoför Bey yeşili, logodan çizilmiş menü ikonları. Telefon gece modundaysa panel de koyu açılır.'],
+      ['Operasyon sekmesi. ', 'SOS bildirimleri, aktif yolculuklar ve ileri rezervasyonlar burada. SOS\'u "İnceleniyor" ya da "Çözüldü" yapabilirsiniz.'],
+      ['Haritada SOS. ', 'SOS bildirilen yer haritada kırmızı nokta olarak görünür.'],
+      ['Karne artık Rapor. ', 'Günlük ve haftalık raporlar Rapor sekmesinde.'],
+      ['Daha sade Özet. ', 'SOS varsa en üstte tek satır çıkar; dokununca Operasyon açılır.']
+    ]
+  };
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const S = { db: null, kul: null, ekip: null, durum: null, guncelleme: 0, komutlar: [], tikler: {}, ata: null, secili: null, tumu: false, sekme: 'ozet' };
@@ -131,6 +142,16 @@
       (DEMO ? '' : '<button class="ikonbtn" id="cikis" title="Çıkış" aria-label="Çıkış">' + ikon('cikis') + '</button>') + '</header>' +
       (sosList.length && S.sekme !== 'talep' ? '<a class="sos-bant" href="#" data-sekme="talep">' + ikon('uyari') + (sosList.length > 1 ? sosList.length + ' SOS bildirimi var' : 'SOS bildirimi var') + '<u>Aç</u></a>' : '') +
       '</div>';
+
+    // Yenilikler: panel güncellenince her telefonda bir kez (Tamam'a basılana kadar) görünür.
+    // Yeni sürümde YENILIK.surum değiştirilir ve maddeler yazılır.
+    let yenilikGordu = '';
+    try { yenilikGordu = localStorage.getItem('sb_yenilik_gordu') || ''; } catch (e) { yenilikGordu = YENILIK.surum; }
+    if (yenilikGordu !== YENILIK.surum) {
+      h += '<div class="kart yenilik"><h2>Yenilikler <span>' + esc(YENILIK.tarih) + '</span></h2><ul>' +
+        YENILIK.maddeler.map((m) => '<li><b>' + esc(m[0]) + '</b>' + esc(m[1]) + '</li>').join('') +
+        '</ul><button class="btn yesil" id="yenilikTamam">Tamam</button></div>';
+    }
 
     // Telefon bildirimi
     if (S.bildirim === 'kapali') h += '<div class="serit sari" style="display:flex;align-items:center;gap:10px"><span style="flex:1">🔔 Alarm gelince telefonun çalsın mı?</span><button class="atabtn" id="bildirimAc">Bildirimleri aç</button></div>';
@@ -387,6 +408,7 @@
         komutGonder({ tur: 'sos_durum', ilan_id: String(b.dataset.sos), metin: durum }, b, 'SOS #' + b.dataset.sos);
       };
     });
+    if ($('yenilikTamam')) $('yenilikTamam').onclick = () => { try { localStorage.setItem('sb_yenilik_gordu', YENILIK.surum); } catch (e) { /* önemsiz */ } ciz(); };
     document.querySelectorAll('[data-kom]').forEach((b) => { b.onclick = () => komutGonder({ tur: b.dataset.kom }, b); });
     document.querySelectorAll('[data-ata]').forEach((b) => { b.onclick = () => ataAc(talepler[+b.dataset.ata]); });
     document.querySelectorAll('[data-detay]').forEach((b) => { b.onclick = () => talepDetay(talepler[+b.dataset.detay], musait); });
