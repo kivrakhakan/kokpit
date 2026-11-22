@@ -11,7 +11,7 @@
   const YENILIK = {
     surum: '2026-11-22d', tarih: '22 Kasım',
     maddeler: [
-      ['Hız uyarısı. ', 'İşteki bir şoför art arda iki ölçümde 130 km/s\'i geçerse Telegram ve telefon bildirimi gelir, Özet\'te uyarı satırı çıkar.'],
+      ['Hız uyarısı. ', 'İşteki bir şoför art arda iki ölçümde 110 km/s\'i geçerse Telegram ve telefon bildirimi gelir, Özet\'te uyarı satırı çıkar.'],
       ['Şoför hızı görünür. ', 'Şoför listesinde ve haritada, işteki şoförün son ölçülen hızı yazar.'],
       ['Telefona bir şey kurulmaz. ', 'Hız, şoför uygulamasının zaten gönderdiği konumdan hesaplanır; uygulama kapalıysa ölçülemez.']
     ]
