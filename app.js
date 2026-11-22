@@ -1011,11 +1011,12 @@
       const lg = document.createElement('div');
       lg.id = 'tur-logo';
       lg.setAttribute('aria-hidden', 'true');
-      lg.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:10001;opacity:0;transition:opacity .4s ease';
-      lg.innerHTML = '<svg viewBox="0 20 240 220" style="width:min(62vmin,420px);height:auto;opacity:.13" fill="#00b621">' +
+      // üst kısımda: tur balonu ekranın altında çıktığı için logo onunla çakışmasın (uygulamada ekran kısa)
+      lg.style.cssText = 'position:fixed;inset:0;display:grid;justify-items:center;align-items:start;padding-top:calc(env(safe-area-inset-top, 0px) + 12vh);pointer-events:none;z-index:10001;opacity:0;transition:opacity .4s ease';
+      lg.innerHTML = '<svg viewBox="0 20 240 220" style="width:min(56vmin,380px);height:auto;opacity:.16" fill="#fff">' +
         '<circle cx="94" cy="74" r="17"/><circle cx="146" cy="74" r="17"/>' +
         '<path d="M48 180 A72 72 0 0 1 192 180 L152 180 A32 32 0 0 0 88 180 Z"/>' +
-        '<path d="M120 162 L170 222 Q173 230 164 228 L120 215 L76 228 Q67 230 70 222 Z" stroke="#00b621" stroke-width="4" stroke-linejoin="round"/></svg>';
+        '<path d="M120 162 L170 222 Q173 230 164 228 L120 215 L76 228 Q67 230 70 222 Z" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>';
       document.body.appendChild(lg);
       requestAnimationFrame(() => { lg.style.opacity = '1'; });
     }
