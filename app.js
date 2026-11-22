@@ -9,8 +9,9 @@
   const DEMO = /[?&]demo=1/.test(location.search);
   // Panelin "Yenilikler" kartı (her yeni sürümde surum değişir, maddeler yenilenir)
   const YENILIK = {
-    surum: '2026-11-22g', tarih: '22 Kasım',
+    surum: '2026-11-22h', tarih: '22 Kasım',
     maddeler: [
+      ['Daha sade alt menü. ', 'Alt menüde 5 düğme kaldı. Harita artık Operasyon\'un içinde (SOS\'un altında); Kayıtlar üstteki büyüteçte.'],
       ['Kokpit\'i tanı. ', 'Hangi sekme ne işe yarar, 1 dakikalık tur. İlk açılışta kendiliğinden gelir; Özet\'in en altından tekrar açılır.'],
       ['Raporu PDF indir. ', 'Haftalık raporun altındaki düğmeyle rapor Türkçe harflerle PDF olarak iner (bilgisayarda ve telefon tarayıcısında).'],
       ['Yeni sekme: Kayıtlar. ', 'Müşteri adı, telefon ya da iş numarasıyla iş, ilan ve üye ara. Bir sonuca dokununca ayrıntısı, arama düğmesi ve sitedeki sayfası açılır.'],
@@ -24,6 +25,7 @@
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const S = { db: null, kul: null, ekip: null, durum: null, guncelleme: 0, komutlar: [], tikler: {}, ata: null, secili: null, tumu: false, sekme: 'ozet' };
   try { S.sekme = localStorage.getItem('sb_sekme') || 'ozet'; } catch (e) { /* önemsiz */ }
+  if (S.sekme === 'harita') S.sekme = 'talep';   // v3: Harita artık Operasyon'un içinde
 
   /* ---------------- yardımcılar ---------------- */
   const trSaat = (ms) => new Date(ms).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' });
@@ -166,6 +168,7 @@
     h += '<div class="bant"><header><img class="logo" src="' + LOGO + '" alt="Şoför Bey"><div><h1>Kokpit</h1><small>' +
       esc(S.ekip ? S.ekip.ad : '') + (d.merkez ? ', kaynak ' + esc(d.merkez) : '') + '</small></div>' +
       '<div class="saat">' + trSaat(now) + '<br><small>' + (S.guncelleme ? (yas < 60000 ? 'az önce güncellendi' : once(S.guncelleme) + ' güncellendi') : 'veri yok') + '</small></div>' +
+      '<button class="ikonbtn' + (S.sekme === 'kayit' ? ' on' : '') + '" data-sekme="kayit" id="kayitAc" title="Kayıtlarda ara" aria-label="Kayıtlarda ara">' + ikon('ara') + '</button>' +
       (window.ReactNativeWebView ? '<button class="ikonbtn" id="bildAyar" title="Bildirim ayarları" aria-label="Bildirim ayarları">' + ikon('zil') + '</button>' : '') +
       (DEMO ? '' : '<button class="ikonbtn" id="cikis" title="Çıkış" aria-label="Çıkış">' + ikon('cikis') + '</button>') + '</header>' +
       (sosList.length && S.sekme !== 'talep' ? '<a class="sos-bant" href="#" data-sekme="talep">' + ikon('uyari') + (sosList.length > 1 ? sosList.length + ' SOS bildirimi var' : 'SOS bildirimi var') + '<u>Aç</u></a>' : '') +
@@ -268,9 +271,10 @@
     // 2026-11-22: "Aktif şoförler" Özet'ten kaldırıldı (kullanıcı: Özet ile Operasyon aynı); şoför listesi yalnız Operasyon'da
 
     // Harita (talepler + şoförler). Harita bir kez kurulur, her çizimde yerine taşınır (yeniden yüklenmesin)
-    h += '§harita§';
+    // v3: Harita ayrı sekme değil, Operasyon'da SOS kartının altında (alt menü 7 → 5 düğme)
+    let haritaH = '';
     if (window.L) {
-      h += '<div class="kart"><h2>Harita <span>' + talepler.filter((t) => t.nereden && sayiMi(t.nereden.enlem)).length + ' talep · ' +
+      haritaH += '<div class="kart"><h2>Harita <span>' + talepler.filter((t) => t.nereden && sayiMi(t.nereden.enlem)).length + ' talep · ' +
         soforler.filter((s) => sayiMi(s.enlem)).length + ' şoför</span></h2><div id="haritaYer"></div>' +
         '<div class="hr-lejant"><span><i style="background:var(--kirmizi)"></i>ACİL</span><span><i style="background:var(--turuncu)"></i>alarm</span>' +
         '<span><i style="background:var(--sari)"></i>uyarı</span><span><i style="background:#fff;border:2px solid var(--yesil)"></i>müsait şoför</span>' +
@@ -280,6 +284,7 @@
     // Talepler
     h += '§talep§';
     h += sosH;
+    h += haritaH;
     h += '<div class="kart"><h2>Atama bekleyen talepler <span>' + e.soft + ' · ' + e.alarm + ' · ' + e.acil + ' dk</span></h2>';
     if (!talepler.length) h += maskotBos('yolunda', 'Bekleyen talep yok', 'Yeni talep gelince burada görünür.');
     talepler.forEach((t, i) => {
@@ -456,11 +461,9 @@
     const kOkunmadi = S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1;
     const sekmeler = [
       ['ozet', 'ozet', 'Özet', yap.length],
-      ['harita', 'harita', 'Harita', 0],
       ['talep', 'op', 'Operasyon', sosList.length ? '!' : aktif.length],
       ['destek', 'destek', 'Destek', destek.length],
       ['sofor', 'sofor', 'Şoförler', ehl.length + bakilmamis],
-      ['kayit', 'ara', 'Kayıtlar', 0],
       ['karne', 'karne', 'Rapor', kOkunmadi ? '!' : 0]
     ];
     goster += '<nav class="altmenu">' + sekmeler.map((s) => '<button data-sekme="' + s[0] + '" class="' + (s[0] === B ? 'on' : '') + '"><span class="am-ik">' + ikon(s[1]) +
@@ -983,11 +986,10 @@
   }
   const TUR_ADIM = [
     ['ozet', 'Özet', 'Her şey yolunda mı, tek bakışta. Bekleyen talep, SOS ve senin yapman gerekenler burada.'],
-    ['harita', 'Harita', 'Şoförlerin ve bekleyen taleplerin yeri. Yan yana duran şoförler tek yuvarlakta toplanır; yakınlaşınca ayrılır.'],
-    ['talep', 'Operasyon', 'Atama bekleyen talepler, aktif yolculuklar, ileri rezervasyonlar ve SOS. Şoför atamayı buradan yaparsın.'],
+    ['talep', 'Operasyon', 'SOS, harita, atama bekleyen talepler, aktif yolculuklar ve ileri rezervasyonlar. Şoför atamayı buradan yaparsın.'],
     ['destek', 'Destek', 'Cevap bekleyen mesajlar. "Yanıtla" ile buradan cevap yazarsın.'],
     ['sofor', 'Şoförler', 'Şoför kayıtları, eksik belgeler, anlık durum ve yeni başvurular.'],
-    ['kayit', 'Kayıtlar', 'İş, ilan ve üye ara; şoförlere ya da müşterilere uygulama bildirimi gönder.'],
+    ['kayit', 'Kayıtlar', 'Üstteki büyüteç: iş, ilan ve üye ara; şoförlere ya da müşterilere uygulama bildirimi gönder.'],
     ['karne', 'Rapor', 'Günlük ve haftalık rapor, grafikler. Haftalık raporu PDF olarak indirebilirsin.']
   ];
   async function turBaslat() {
@@ -1020,8 +1022,10 @@
       document.body.appendChild(lg);
       requestAnimationFrame(() => { lg.style.opacity = '1'; });
     }
-    const adim = TUR_ADIM.filter((a) => document.querySelector('.altmenu [data-sekme="' + a[0] + '"]'))
-      .map((a) => ({ element: '.altmenu [data-sekme="' + a[0] + '"]', popover: { title: a[1], description: a[2], side: 'top', align: 'center' } }));
+    // Kayıtlar alt menüde değil, üst banttaki büyüteçte (#kayitAc); balonu onun altında açılır
+    const sec = (a) => (a[0] === 'kayit' ? '#kayitAc' : '.altmenu [data-sekme="' + a[0] + '"]');
+    const adim = TUR_ADIM.filter((a) => document.querySelector(sec(a)))
+      .map((a) => ({ element: sec(a), popover: { title: a[1], description: a[2], side: a[0] === 'kayit' ? 'bottom' : 'top', align: a[0] === 'kayit' ? 'end' : 'center' } }));
     adim.push({ popover: { title: 'Son bir şey', description: 'Atama, bildirim ve arama gibi işlemleri Operasyon Merkezi açık olan bilgisayardaki eklenti yapar. O sayfanın bir bilgisayarda hep açık kalması gerekir. Bu turu Özet\'in en altından tekrar açabilirsin.' } });
     const tur = window.driver.js.driver({
       steps: adim, showProgress: true, progressText: '{{current}} / {{total}}', popoverClass: 'sb-tur',
