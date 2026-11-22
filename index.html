@@ -130,6 +130,27 @@ h1,h2,h3,.durum b,.sayi b{font-family:"Barlow Semi Condensed",Barlow,sans-serif}
 .kap{padding-top:0}
 html,body{overflow-x:hidden}
 .kume{background:var(--yesil);color:#fff;border-radius:50%;display:grid;place-items:center;font:800 16px "Barlow Semi Condensed",Barlow,sans-serif;box-shadow:0 0 0 5px #00b62155,0 3px 0 var(--yol)}
+.ky-ara{display:flex;gap:8px;margin:4px 0 10px}
+.ky-ara input{flex:1;min-width:0;border:2px solid var(--cizgi);border-radius:14px;background:var(--bg);color:var(--yazi);font:inherit;font-size:16px;padding:11px 12px}
+.ky-ara input:focus,.ky-alan:focus{outline:none;border-color:var(--yesil)}
+.ky-ara .btn{width:auto;padding:0 20px}
+.ky-cipler{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}
+.ky-cip{border:0;border-radius:99px;padding:7px 14px;background:var(--bg);color:var(--yazi);font:600 14px Barlow,system-ui,sans-serif;white-space:nowrap}
+.ky-cip[aria-pressed=true]{background:var(--yol);color:#fff}
+.ky-sonuc{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--cizgi);padding:11px 0;color:var(--yazi);font:inherit}
+.ky-sonuc:first-of-type{border-top:0}
+.ky-tur{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:800 12px "Barlow Semi Condensed",Barlow,sans-serif;background:var(--yesilAcik);color:var(--yol)}
+.ky-tur.ky-ilan{background:#fff4dc;color:#8a5a00}.ky-tur.ky-uye{background:#eef0ff;color:#3b3f9a}
+.ky-ic{flex:1;min-width:0}.ky-ic b{display:block;font-weight:700}.ky-ic small{display:block;color:var(--soluk);font-size:13.5px}
+.ky-durum{display:inline-block;margin-top:3px;font-style:normal;font-size:12px;font-weight:700;border-radius:6px;padding:1px 7px;background:var(--yesilAcik);color:var(--yol)}
+.ky-durum.kapali{background:#fde3e6;color:#a3172a}
+.ky-sag{text-align:right;font-size:12.5px;color:var(--soluk);white-space:nowrap}.ky-sag b{display:block;color:var(--yazi);font-size:15px}
+.ky-et{display:block;font-weight:700;font-size:14px;margin:12px 0 6px}
+.ky-alan{width:100%;box-sizing:border-box;border:2px solid var(--cizgi);border-radius:14px;background:var(--bg);color:var(--yazi);font:inherit;font-size:16px;padding:11px 12px;resize:vertical}
+.ky-onizle{display:flex;gap:10px;background:#1b2a20;color:#fff;border-radius:16px;padding:10px 12px;font-size:13.5px;word-break:break-word}
+.ky-onizle img{width:30px;height:30px;border-radius:8px;background:#fff;flex:none}.ky-onizle b{display:block}
+mark{background:#00b62133;color:inherit;border-radius:3px;padding:0 1px}
+@media (prefers-color-scheme:dark){.ky-tur,.ky-durum{color:#5ee27a}.ky-tur.ky-ilan{background:#33280d;color:#f5c66b}.ky-tur.ky-uye{background:#1d2140;color:#b9bdff}.ky-durum.kapali{background:#3a1419;color:#ff9aa5}}
 .kume.mesgul{background:#d9620a;box-shadow:0 0 0 5px #d9620a55,0 3px 0 #8a3c00}
 .bant{margin:0 -16px 4px;padding:calc(10px + env(safe-area-inset-top)) 16px 34px;background:var(--yesil);color:#fff;position:relative;overflow:hidden}
 .bant::after{content:"";position:absolute;left:-12%;right:-12%;bottom:-1px;height:30px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0}
@@ -303,6 +324,6 @@ input,textarea{background:var(--kart);border-color:var(--cizgi)}
 <script src="kutuphane/dayjs-1.11.23-tr.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js?v=20261122"></script>
-<script src="app.js?v=20261122m"></script>
+<script src="app.js?v=20261122n"></script>
 </body>
 </html>

@@ -9,8 +9,10 @@
   const DEMO = /[?&]demo=1/.test(location.search);
   // Panelin "Yenilikler" kartı (her yeni sürümde surum değişir, maddeler yenilenir)
   const YENILIK = {
-    surum: '2026-11-22e', tarih: '22 Kasım',
+    surum: '2026-11-22f', tarih: '22 Kasım',
     maddeler: [
+      ['Yeni sekme: Kayıtlar. ', 'Müşteri adı, telefon ya da iş numarasıyla iş, ilan ve üye ara. Bir sonuca dokununca ayrıntısı, arama düğmesi ve sitedeki sayfası açılır.'],
+      ['Uygulama bildirimi gönder. ', 'Şoförlere, müşterilere, herkese ya da tek bir üyeye telefon bildirimi. Göndermeden önce telefonda nasıl görüneceği gösterilir (yalnız yöneticiler).'],
       ['Haritada gruplama. ', 'Yan yana duran şoförler tek yuvarlakta toplanır, üstünde kaç kişi olduğu yazar. Yakınlaştırınca ayrılırlar. Talep ve SOS noktaları hep ayrı görünür.'],
       ['Raporda grafik. ', 'Günlere ve saatlere göre talep artık gerçek grafik; bir çubuğa dokununca sayısı çıkar.'],
       ['Türkçe zaman. ', 'Konum ve güncelleme saatleri "8 dakika önce", "2 saat önce" diye yazar.']
@@ -419,16 +421,19 @@
 
     // Son işlemler (özet sekmesinde)
     h += '§ozet§';
-    const son = S.komutlar.slice(0, 6);
+    const son = S.komutlar.filter((k) => k.tur !== 'ara').slice(0, 6);
     if (son.length) {
       h += '<div class="kart"><h2>Son işlemler</h2>';
       son.forEach((k) => {
-        const ne = k.tur === 'ata' ? 'şoför atama' : k.tur === 'sos_durum' ? 'SOS #' + esc(k.ilan_id) + ' → ' + esc(k.metin || '') : k.tur === 'gordum' ? '"Gördüm"' : k.tur === 'destek_cevap' ? 'destek cevabı #' + esc(k.ilan_id) : '"İlgileniyorum"';
+        const ne = k.tur === 'ata' ? 'şoför atama' : k.tur === 'bildirim' ? 'uygulama bildirimi: ' + esc(String(k.metin || '').split('\n')[0]) : k.tur === 'sos_durum' ? 'SOS #' + esc(k.ilan_id) + ' → ' + esc(k.metin || '') : k.tur === 'gordum' ? '"Gördüm"' : k.tur === 'destek_cevap' ? 'destek cevabı #' + esc(k.ilan_id) : '"İlgileniyorum"';
         const sonuc = k.durum === 'tamam' ? '✅' : k.durum === 'hata' ? '❌ ' + esc(k.mesaj || '') : '⏳ bekliyor';
         h += '<div class="kom"><b>' + esc(k.kim) + '</b> · ' + ne + ' · ' + trSaat(Date.parse(k.olusturma)) + ' · ' + sonuc + '</div>';
       });
       h += '</div>';
     }
+
+    // Kayıtlar sekmesi (v3): içerik kalıcı bölümdür, çizimden sonra yerine taşınır
+    h += '§kayit§<div id="kayitYer"></div>';
 
     // Karne sekmesi
     h += '§karne§';
@@ -451,6 +456,7 @@
       ['talep', 'op', 'Operasyon', sosList.length ? '!' : aktif.length],
       ['destek', 'destek', 'Destek', destek.length],
       ['sofor', 'sofor', 'Şoförler', ehl.length + bakilmamis],
+      ['kayit', 'ara', 'Kayıtlar', 0],
       ['karne', 'karne', 'Rapor', kOkunmadi ? '!' : 0]
     ];
     goster += '<nav class="altmenu">' + sekmeler.map((s) => '<button data-sekme="' + s[0] + '" class="' + (s[0] === B ? 'on' : '') + '"><span class="am-ik">' + ikon(s[1]) +
@@ -459,6 +465,7 @@
     const eskiHarita = S.haritaEl && S.haritaEl.parentNode ? S.haritaEl.parentNode.removeChild(S.haritaEl) : S.haritaEl;
     $('uygulama').innerHTML = goster;
     if (window.L && $('haritaYer')) haritaCiz(talepler, soforler, e, eskiHarita, musait, sosList);
+    if ($('kayitYer')) $('kayitYer').appendChild(kayitKur());
     document.querySelectorAll('[data-sos]').forEach((b) => {
       b.onclick = () => {
         const durum = b.dataset.sosd;
@@ -946,6 +953,165 @@
   }
   function ataKapat() { S.ata = null; const p = $('ataPerde'); if (p) p.remove(); }
 
+  /* ---------------- v3 Kayıtlar: arama + uygulama bildirimi ----------------
+     Bölüm bir kez kurulur ve her çizimde yerine taşınır (panel sık yeniden çizilir; yazılan metin kaybolmasın). */
+  const KY = { el: null, tur: 'hepsi', bekleyen: null, sonuc: null, hata: '', zamanlayici: null, hedef: 'sofor', uye: null };
+  const KY_AD = { is: 'İş', ilan: 'İlan', uye: 'Üye' };
+  const KY_HEDEF = { sofor: 'Şoförler', musteri: 'Müşteriler', tum: 'Tüm üyeler' };
+  function kayitKur() {
+    if (KY.el) return KY.el;
+    const el = document.createElement('div');
+    el.id = 'kayitBolum';
+    const yonetici = S.ekip && S.ekip.rol === 'yonetici';
+    el.innerHTML =
+      '<div class="kart"><h2>Kayıtlarda ara</h2>' +
+      '<form class="ky-ara" id="kyForm" autocomplete="off"><input id="kyQ" type="search" maxlength="60" placeholder="Ad, telefon ya da iş no" aria-label="Kayıtlarda ara">' +
+      '<button class="btn yesil" id="kyAra" type="submit">Ara</button></form>' +
+      '<div class="ky-cipler" id="kyCip">' + [['hepsi', 'Hepsi'], ['is', 'İşler'], ['ilan', 'İlanlar'], ['uye', 'Üyeler']].map((c) =>
+        '<button type="button" class="ky-cip" data-kt="' + c[0] + '" aria-pressed="' + (c[0] === KY.tur) + '">' + c[1] + '</button>').join('') + '</div>' +
+      '<div id="kySonuc"><div class="bos">Telefonun son hanelerini, müşteri adını ya da iş numarasını yaz. Aramayı açık bilgisayardaki eklenti yapar, birkaç saniye sürer.</div></div></div>' +
+      (yonetici
+        ? '<div class="kart" id="kyBildirim"><h2>Uygulama bildirimi gönder</h2>' +
+          '<label class="ky-et">Kime</label><div class="ky-cipler" id="kyHedef"></div>' +
+          '<label class="ky-et" for="kyBas">Başlık</label><input id="kyBas" class="ky-alan" maxlength="120">' +
+          '<label class="ky-et" for="kyMsj">Mesaj</label><textarea id="kyMsj" class="ky-alan" maxlength="1000" rows="4"></textarea>' +
+          '<label class="ky-et">Telefonda böyle görünecek</label><div class="ky-onizle"><img src="' + ADMIN + 'static/img/ikon.png" alt=""><div><b id="kyOb">Başlık</b><span id="kyOm"></span></div></div>' +
+          '<button class="btn yesil" id="kyGonder" style="margin-top:12px">Gönder</button>' +
+          '<p class="alt" style="margin-top:8px">Bildirimi açık bilgisayardaki eklenti gönderir. Gönderilen bildirim geri alınamaz.</p></div>'
+        : '');
+    KY.el = el;
+    el.querySelector('#kyForm').onsubmit = (e) => { e.preventDefault(); kayitAra(); };
+    el.querySelector('#kyCip').onclick = (e) => {
+      const b = e.target.closest('[data-kt]');
+      if (!b) return;
+      KY.tur = b.dataset.kt;
+      el.querySelectorAll('#kyCip [data-kt]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      if (KY.sonuc) kayitSonucCiz();
+    };
+    el.querySelector('#kySonuc').onclick = (e) => { const s = e.target.closest('[data-ky]'); if (s) kayitDetay(KY.sonuc.kayitlar[+s.dataset.ky]); };
+    if (yonetici) {
+      const on = () => { el.querySelector('#kyOb').textContent = el.querySelector('#kyBas').value.trim() || 'Başlık'; el.querySelector('#kyOm').textContent = el.querySelector('#kyMsj').value.trim(); };
+      el.querySelector('#kyBas').oninput = on;
+      el.querySelector('#kyMsj').oninput = on;
+      el.querySelector('#kyHedef').onclick = (e) => {
+        const b = e.target.closest('[data-kh]');
+        if (!b) return;
+        KY.hedef = b.dataset.kh;
+        if (KY.hedef !== 'uye') KY.uye = null;
+        kayitHedefCiz();
+      };
+      el.querySelector('#kyGonder').onclick = kayitBildirimGonder;
+      kayitHedefCiz();
+    }
+    return el;
+  }
+  function kayitHedefCiz() {
+    const h = KY.el.querySelector('#kyHedef');
+    if (!h) return;
+    const l = Object.keys(KY_HEDEF).map((k) => [k, KY_HEDEF[k]]);
+    if (KY.uye) l.push(['uye', KY.uye.ad + ' (#' + KY.uye.no + ')']);
+    h.innerHTML = l.map((c) => '<button type="button" class="ky-cip" data-kh="' + c[0] + '" aria-pressed="' + (c[0] === KY.hedef) + '">' + esc(c[1]) + '</button>').join('');
+  }
+  async function kayitAra() {
+    const q = KY.el.querySelector('#kyQ').value.trim();
+    if (q.length < 2) { bildir('En az 2 harf ya da rakam yaz.'); return; }
+    KY.hata = '';
+    const kut = KY.el.querySelector('#kySonuc');
+    kut.innerHTML = '<div class="bos">Aranıyor…</div>';
+    KY.el.querySelector('#kyAra').disabled = true;
+    const bitir = () => { KY.el.querySelector('#kyAra').disabled = false; clearTimeout(KY.zamanlayici); KY.bekleyen = null; };
+    if (DEMO) {
+      setTimeout(() => { bitir(); KY.sonuc = demoKayit(q); kayitSonucCiz(); }, 700);
+      return;
+    }
+    const { data, error } = await S.db.from('komutlar').insert({ kim: S.ekip.ad, tur: 'ara', ilan_tipi: 'hepsi', metin: q }).select('id').single();
+    if (error) { bitir(); kut.innerHTML = '<div class="bos">Arama gönderilemedi: ' + esc(error.message) + '</div>'; return; }
+    KY.bekleyen = data.id;
+    KY.zamanlayici = setTimeout(() => {
+      if (KY.bekleyen !== data.id) return;
+      bitir();
+      kut.innerHTML = '<div class="bos">Bilgisayardan 45 saniyedir cevap gelmedi. Operasyon Merkezi\'nin açık olduğu bir bilgisayar gerekiyor; açınca arama kendiliğinden yapılır.</div>';
+    }, 45000);
+  }
+  // komutlar değişince çağrılır: bekleyen arama bittiyse sonucu oku
+  async function kayitKontrol() {
+    if (!KY.bekleyen) return;
+    const k = S.komutlar.find((x) => x.id === KY.bekleyen);
+    if (!k || k.durum === 'bekliyor') return;
+    const id = KY.bekleyen;
+    KY.bekleyen = null;
+    clearTimeout(KY.zamanlayici);
+    if (KY.el) KY.el.querySelector('#kyAra').disabled = false;
+    if (k.durum === 'hata') { KY.el.querySelector('#kySonuc').innerHTML = '<div class="bos">Aranamadı: ' + esc(k.mesaj || 'bilinmeyen hata') + '</div>'; return; }
+    const { data } = await S.db.from('komutlar').select('veri').eq('id', id).maybeSingle();
+    KY.sonuc = (data && data.veri) || { kayitlar: [] };
+    kayitSonucCiz();
+  }
+  function kucukTr(s) { return String(s || '').toLocaleLowerCase('tr-TR'); }
+  function vurgu(s, q) {
+    s = String(s || '');
+    const i = q ? kucukTr(s).indexOf(kucukTr(q)) : -1;
+    return i < 0 ? esc(s) : esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length));
+  }
+  function kayitSonucCiz() {
+    const r = KY.sonuc, kut = KY.el.querySelector('#kySonuc');
+    const l = (r.kayitlar || []).map((x, i) => [x, i]).filter((p) => KY.tur === 'hepsi' || p[0].t === KY.tur);
+    if (!l.length) {
+      kut.innerHTML = '<div class="bos">"' + esc(r.q || '') + '" için ' + (KY.tur === 'hepsi' ? '' : KY_AD[KY.tur].toLocaleLowerCase('tr-TR') + ' ') + 'kayıt yok. Telefonu başında 0 olmadan, iş numarasını # olmadan yazmayı dene.</div>';
+      return;
+    }
+    kut.innerHTML = '<div class="alt" style="margin:2px 0 4px">' + l.length + ' kayıt' + (r.at ? ' · ' + once(r.at) + ' arandı' : '') + '</div>' + l.map(([x, i]) => {
+      const alt = x.t === 'uye' ? [x.tip, x.tel].filter(Boolean).join(' · ') : [x.nereden, x.nereye].filter(Boolean).join(' › ');
+      return '<button class="ky-sonuc" data-ky="' + i + '"><span class="ky-tur ky-' + x.t + '">' + KY_AD[x.t] + '</span><span class="ky-ic"><b>' + vurgu(x.ad || '—', r.q) + '</b>' +
+        '<small>#' + vurgu(x.no, r.q) + (alt ? ' · ' + vurgu(alt, r.q) : '') + '</small>' + (x.durum ? '<em class="ky-durum' + (/İptal|Pasif/.test(x.durum) ? ' kapali' : '') + '">' + esc(x.durum) + '</em>' : '') + '</span>' +
+        '<span class="ky-sag">' + (x.tutar ? '<b>' + esc(x.tutar.replace(/\.(\d\d) ₺$/, ',$1 ₺')) + '</b>' : '') + esc(x.tarih || '') + '</span></button>';
+    }).join('');
+  }
+  function kayitDetay(x) {
+    if (!x) return;
+    let h = '<h3>' + esc(x.ad || '—') + '</h3><div class="alt">' + KY_AD[x.t] + ' #' + esc(x.no) + (x.tip ? ' · ' + esc(x.tip) : '') + (x.durum ? ' · ' + esc(x.durum) : '') + '</div>';
+    if (x.tel) h += bilgi('Telefon', '<a href="tel:' + esc(x.tel.replace(/\s/g, '')) + '">' + esc(x.tel) + '</a>');
+    if (x.sofor) h += bilgi('Şoför', esc(x.sofor));
+    if (x.nereden) h += bilgi('Güzergâh', esc(x.nereden) + (x.nereye ? ' › ' + esc(x.nereye) : ''));
+    if (x.tutar) h += bilgi('Tutar', esc(x.tutar));
+    if (x.tarih) h += bilgi(x.t === 'uye' ? 'Kayıt' : 'Tarih', esc(x.tarih));
+    if (/^\/admin\//.test(x.link || '')) h += '<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="' + ADMIN + esc(x.link.slice(1)) + '" target="_blank" rel="noopener">Sitede aç</a>';
+    if (x.t === 'uye' && KY.el.querySelector('#kyBildirim')) h += '<button class="btn yesil" id="kyUyeBil" style="margin-top:10px">Bu kişiye bildirim yaz</button>';
+    const p = pencere(h);
+    const b = $('kyUyeBil');
+    if (b) b.onclick = () => {
+      p.remove();
+      KY.uye = { no: x.no, ad: x.ad };
+      KY.hedef = 'uye';
+      kayitHedefCiz();
+      KY.el.querySelector('#kyBildirim').scrollIntoView({ behavior: 'smooth' });
+      KY.el.querySelector('#kyBas').focus();
+    };
+  }
+  function kayitBildirimGonder() {
+    const bas = KY.el.querySelector('#kyBas').value.trim(), msj = KY.el.querySelector('#kyMsj').value.trim();
+    if (!bas || !msj) { bildir('Başlık ve mesaj boş olamaz.'); return; }
+    const kime = KY.hedef === 'uye' && KY.uye ? KY.uye.ad + ' (#' + KY.uye.no + ')' : KY_HEDEF[KY.hedef];
+    if (!confirm('"' + bas + '" bildirimi şu kişilere gönderilsin mi?\n\n' + kime + '\n\nGönderilen bildirim geri alınamaz.')) return;
+    const b = KY.el.querySelector('#kyGonder');
+    komutGonder({ tur: 'bildirim', ilan_tipi: KY.hedef, ilan_id: KY.hedef === 'uye' && KY.uye ? String(KY.uye.no) : null, metin: bas + '\n' + msj }, b, kime);
+    KY.el.querySelector('#kyBas').value = '';
+    KY.el.querySelector('#kyMsj').value = '';
+    KY.el.querySelector('#kyOb').textContent = 'Başlık';
+    KY.el.querySelector('#kyOm').textContent = '';
+    setTimeout(() => { b.disabled = false; }, 3000);
+  }
+  function demoKayit(q) {
+    const l = [
+      { t: 'is', no: '48213', tip: 'Anlık', ad: 'Yıldız Kaya', tel: '+90 5321234107', sofor: 'Kerem Aydın', nereden: 'Aydın / Kuşadası', nereye: 'İzmir / Adnan Menderes', tutar: '1450.00 ₺', durum: 'Tamamlandı', tarih: '22.11.2026 09:12', link: '/admin/isler/48213' },
+      { t: 'is', no: '48190', tip: 'Planlı', ad: 'Ahmet Yılmaz', tel: '+90 5059876543', sofor: '', nereden: 'Aydın / Söke', nereye: 'Aydın / Kuşadası', tutar: '620.00 ₺', durum: 'İptal Edildi', tarih: '21.11.2026 18:40', link: '/admin/isler/48190' },
+      { t: 'ilan', no: '9921', tip: 'Planlı', ad: 'Yıldırım Turizm', tel: '+90 5441112233', nereden: 'Aydın / Kuşadası', nereye: 'İzmir / Adnan Menderes', tutar: '2100.00 ₺', durum: 'Aktif', tarih: '23.11.2026 07:30', link: '/admin/ilanlar/planli/9921' },
+      { t: 'uye', no: '246', ad: 'Selin Yıldız', tel: '+90 5324410700', tip: 'Üye', durum: 'Aktif', tarih: '20.11.2026 11:07', link: '/admin/uyeler/246' },
+      { t: 'uye', no: '187', ad: 'Kerem Aydın', tel: '+90 5051230000', tip: 'Şoför', durum: 'Aktif', tarih: '18.11.2026 22:53', link: '/admin/uyeler/187' }
+    ].filter((x) => kucukTr(Object.values(x).join(' ')).includes(kucukTr(q)));
+    return { q, tur: 'hepsi', at: Date.now(), kayitlar: l };
+  }
+
   /* ---------------- bulut işlemleri ---------------- */
   async function komutGonder(k, btn, ad) {
     if (btn) btn.disabled = true;
@@ -958,7 +1124,7 @@
     const kayit = Object.assign({ kim: S.ekip.ad }, k);
     const { error } = await S.db.from('komutlar').insert(kayit);
     if (error) { bildir('Gönderilemedi: ' + error.message); if (btn) btn.disabled = false; return; }
-    bildir(k.tur === 'ata' ? ad + ' için atama gönderildi, bilgisayar yapıyor…' : k.tur === 'destek_cevap' ? ad + ' için cevap gönderiliyor…' : k.tur === 'sos_durum' ? ad + ': "' + k.metin + '" gönderildi, bilgisayar yapıyor…' : k.tur === 'gordum' ? 'Alarm susturuluyor…' : 'Ekibe bildirildi');
+    bildir(k.tur === 'ata' ? ad + ' için atama gönderildi, bilgisayar yapıyor…' : k.tur === 'bildirim' ? ad + ' için bildirim sıraya alındı, bilgisayar gönderiyor…' : k.tur === 'destek_cevap' ? ad + ' için cevap gönderiliyor…' : k.tur === 'sos_durum' ? ad + ': "' + k.metin + '" gönderildi, bilgisayar yapıyor…' : k.tur === 'gordum' ? 'Alarm susturuluyor…' : 'Ekibe bildirildi');
     if (Date.now() - S.guncelleme > C.bayatSn * 1000) bildir('Uyarı: şu an veri gelmiyor, işlemi yapacak açık bilgisayar olmayabilir.');
     komutlariYukle();
   }
@@ -976,10 +1142,11 @@
     S.komutlar.forEach((k) => {
       const eski = once.find((o) => o.id === k.id);
       if (eski && eski.durum === 'bekliyor' && k.durum !== 'bekliyor' && k.kim === S.ekip.ad) {
-        bildir(k.durum === 'tamam' ? '✅ ' + (k.mesaj || 'Tamamlandı') : '❌ ' + (k.mesaj || 'Yapılamadı'));
+        if (k.tur !== 'ara') bildir(k.durum === 'tamam' ? '✅ ' + (k.mesaj || 'Tamamlandı') : '❌ ' + (k.mesaj || 'Yapılamadı'));
       }
     });
     ciz();
+    kayitKontrol();
   }
   let basladi = false;
   let KURTARMA = false;
