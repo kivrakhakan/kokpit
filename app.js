@@ -9,11 +9,11 @@
   const DEMO = /[?&]demo=1/.test(location.search);
   // Panelin "Yenilikler" kartı (her yeni sürümde surum değişir, maddeler yenilenir)
   const YENILIK = {
-    surum: '2026-11-22d', tarih: '22 Kasım',
+    surum: '2026-11-22e', tarih: '22 Kasım',
     maddeler: [
-      ['Hız uyarısı. ', 'İşteki bir şoför art arda iki ölçümde 110 km/s\'i geçerse Telegram ve telefon bildirimi gelir, Özet\'te uyarı satırı çıkar.'],
-      ['Şoför hızı görünür. ', 'Şoför listesinde ve haritada, işteki şoförün son ölçülen hızı yazar.'],
-      ['Telefona bir şey kurulmaz. ', 'Hız, şoför uygulamasının zaten gönderdiği konumdan hesaplanır; uygulama kapalıysa ölçülemez.']
+      ['Haritada gruplama. ', 'Yan yana duran şoförler tek yuvarlakta toplanır, üstünde kaç kişi olduğu yazar. Yakınlaştırınca ayrılırlar. Talep ve SOS noktaları hep ayrı görünür.'],
+      ['Raporda grafik. ', 'Günlere ve saatlere göre talep artık gerçek grafik; bir çubuğa dokununca sayısı çıkar.'],
+      ['Türkçe zaman. ', 'Konum ve güncelleme saatleri "8 dakika önce", "2 saat önce" diye yazar.']
     ]
   };
   const $ = (id) => document.getElementById(id);
@@ -29,6 +29,14 @@
     if (m < 60) return m + ' dk';
     if (m < 1440) return Math.floor(m / 60) + ' saat';
     return Math.floor(m / 1440) + ' gün';
+  }
+  // v3: zaman damgasından Türkçe "8 dakika önce" (dayjs); kütüphane yüklenmediyse eski yazım
+  const DJ = window.dayjs && window.dayjs_plugin_relativeTime ? (dayjs.extend(window.dayjs_plugin_relativeTime), dayjs.locale('tr'), dayjs) : null;
+  function once(t) {
+    const ms = typeof t === 'number' ? t : Date.parse(t);
+    if (!sayiMi(ms)) return '';
+    if (Date.now() - ms < 60000) return 'az önce';
+    return DJ ? DJ(Math.min(ms, Date.now())).fromNow() : sure(Date.now() - ms) + ' önce';
   }
   function km(a1, o1, a2, o2) {
     const R = 6371, r = Math.PI / 180;
@@ -151,7 +159,7 @@
     // Üst yeşil bant (logodaki kemerle biter). SOS varsa beyaz şerit bandın içinde; Operasyon'da kartın kendisi görünür.
     h += '<div class="bant"><header><img class="logo" src="' + LOGO + '" alt="Şoför Bey"><div><h1>Kokpit</h1><small>' +
       esc(S.ekip ? S.ekip.ad : '') + (d.merkez ? ', kaynak ' + esc(d.merkez) : '') + '</small></div>' +
-      '<div class="saat">' + trSaat(now) + '<br><small>' + (S.guncelleme ? (yas < 60000 ? 'az önce güncellendi' : sure(yas) + ' önce güncellendi') : 'veri yok') + '</small></div>' +
+      '<div class="saat">' + trSaat(now) + '<br><small>' + (S.guncelleme ? (yas < 60000 ? 'az önce güncellendi' : once(S.guncelleme) + ' güncellendi') : 'veri yok') + '</small></div>' +
       (window.ReactNativeWebView ? '<button class="ikonbtn" id="bildAyar" title="Bildirim ayarları" aria-label="Bildirim ayarları">' + ikon('zil') + '</button>' : '') +
       (DEMO ? '' : '<button class="ikonbtn" id="cikis" title="Çıkış" aria-label="Çıkış">' + ikon('cikis') + '</button>') + '</header>' +
       (sosList.length && S.sekme !== 'talep' ? '<a class="sos-bant" href="#" data-sekme="talep">' + ikon('uyari') + (sosList.length > 1 ? sosList.length + ' SOS bildirimi var' : 'SOS bildirimi var') + '<u>Aç</u></a>' : '') +
@@ -326,7 +334,7 @@
     h += '§sofor§';
     const sk = d.sofor_kayit && typeof d.sofor_kayit === 'object' ? d.sofor_kayit : null;
     const ehl = sk && Array.isArray(sk.ehliyet) ? sk.ehliyet : [];
-    const skOku = sk && sk.at ? ' · ' + sure(now - sk.at) + ' önce okundu' : '';
+    const skOku = sk && sk.at ? ' · ' + once(sk.at) + ' okundu' : '';
     if (ehl.length) {
       h += '<div class="kart"><h2>Ehliyet yenileme <span>' + ehl.length + ' onay bekliyor</span></h2>';
       ehl.forEach((x) => {
@@ -342,7 +350,7 @@
     sfSira.forEach((s, i) => {
       const renk = s.durum === 'Müsait' ? 'var(--yesil)' : s.durum === 'Meşgul' ? 'var(--sari)' : '#555b69';
       h += '<div class="sf"><span class="nokta" style="background:' + renk + '"></span><div class="ad tikla" data-sofor="' + i + '">' + esc(s.ad) +
-        '<small>' + esc(s.durum || '?') + (s.hiz != null ? ' · ' + esc(String(s.hiz)) + ' km/s' : '') + (s.konum_ms ? ' · konum ' + sure(now - s.konum_ms) + ' önce' : '') + '</small></div>' +
+        '<small>' + esc(s.durum || '?') + (s.hiz != null ? ' · ' + esc(String(s.hiz)) + ' km/s' : '') + (s.konum_ms ? ' · konum ' + once(s.konum_ms) : '') + '</small></div>' +
         (s.telefon ? '<a class="tel" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">Ara</a>' : '') + '</div>';
     });
     h += '</div>';
@@ -494,7 +502,7 @@
       .map((s) => ({ s, k: km(+n.enlem, +n.boylam, +s.enlem, +s.boylam) })).sort((a, b) => a.k - b.k);
     if (!l.length) return ik('harita') + 'Konumu bilinen müsait şoför yok';
     const eski = l[0].s.konum_ms && Date.now() - l[0].s.konum_ms > 30 * 60000;
-    return ik('harita') + 'En yakın: ' + esc(l[0].s.ad) + ' ~' + kmYaz(l[0].k) + (l[0].s.konum_ms ? ' (konum ' + sure(Date.now() - l[0].s.konum_ms) + ' önce' + (eski ? ' ⚠' : '') + ')' : '');
+    return ik('harita') + 'En yakın: ' + esc(l[0].s.ad) + ' ~' + kmYaz(l[0].k) + (l[0].s.konum_ms ? ' (konum ' + once(l[0].s.konum_ms) + (eski ? ' ⚠' : '') + ')' : '');
   }
 
   /* ---------------- detay pencereleri ---------------- */
@@ -520,7 +528,7 @@
     const l = sayiMi(n.enlem) ? musait.filter((s) => sayiMi(s.enlem)).map((s) => ({ s, k: km(+n.enlem, +n.boylam, +s.enlem, +s.boylam) })).sort((a, b) => a.k - b.k) : [];
     if (l.length) {
       h += '<div class="kom" style="color:var(--soluk)">Müsait şoförler (yakından uzağa):</div>' + l.map((x) =>
-        '<div class="kom"><b>' + esc(x.s.ad) + '</b> · ~' + kmYaz(x.k) + (x.s.konum_ms ? ' · konum ' + sure(Date.now() - x.s.konum_ms) + ' önce' : '') + '</div>').join('');
+        '<div class="kom"><b>' + esc(x.s.ad) + '</b> · ~' + kmYaz(x.k) + (x.s.konum_ms ? ' · konum ' + once(x.s.konum_ms) : '') + '</div>').join('');
     }
     h += '<div class="ikili" style="margin-top:12px"><a class="btn" style="text-align:center;text-decoration:none" href="' + harita(n) + '" target="_blank" rel="noopener">' + ik('harita') + 'Haritada aç</a>' +
       (t.id ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + ADMIN + 'admin/ilanlar/' + encodeURIComponent(t.tip || 'anlik') + '/' + encodeURIComponent(t.id) + '" target="_blank" rel="noopener">Admin\'de aç</a>' : '<span></span>') + '</div>';
@@ -530,7 +538,7 @@
   }
   function soforDetay(s) {
     let h = '<h3>' + esc(s.ad) + '</h3><div class="alt">' + esc(s.durum || '?') + (s.cevrimici ? ' · uygulama açık' : ' · uygulama kapalı') + '</div>';
-    h += bilgi('Konum', s.konum_ms ? sure(Date.now() - s.konum_ms) + ' önce alındı' + (Date.now() - s.konum_ms > 30 * 60000 ? ' (eski olabilir)' : '') : 'bilinmiyor');
+    h += bilgi('Konum', s.konum_ms ? once(s.konum_ms) + ' alındı' + (Date.now() - s.konum_ms > 30 * 60000 ? ' (eski olabilir)' : '') : 'bilinmiyor');
     h += bilgi('Telefon', s.telefon ? esc(s.telefon) : '');
     h += '<div class="ikili" style="margin-top:12px">' +
       (sayiMi(s.enlem) ? '<a class="btn" style="text-align:center;text-decoration:none" href="' + harita(s) + '" target="_blank" rel="noopener">' + ik('harita') + 'Haritada aç</a>' : '<span></span>') +
@@ -550,17 +558,26 @@
       S.harita = L.map(el, { zoomControl: true, attributionControl: true }).setView([37.86, 27.26], 11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(S.harita);
       S.haritaKatman = L.layerGroup().addTo(S.harita);
+      // v3: yan yana şoförler tek yuvarlakta toplanır (talep ve SOS noktaları gruplanmaz, hep görünür)
+      S.soforKume = L.markerClusterGroup
+        ? L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 50, spiderfyOnMaxZoom: true,
+            iconCreateFunction: (c) => {
+              const l = c.getAllChildMarkers(), n = l.length, mes = l.filter((x) => x.options.mesgul).length, b = n > 9 ? 46 : 40;
+              return L.divIcon({ html: '<div class="kume' + (mes > n / 2 ? ' mesgul' : '') + '" style="width:' + b + 'px;height:' + b + 'px">' + n + '</div>', className: '', iconSize: [b, b] });
+            } }).addTo(S.harita)
+        : S.haritaKatman;
     }
     setTimeout(() => S.harita.invalidateSize(), 0);
     const kat = S.haritaKatman;
     kat.clearLayers();
+    if (S.soforKume !== kat) S.soforKume.clearLayers();
     const noktalar = [];
     soforler.filter((s) => sayiMi(s.enlem) && sayiMi(s.boylam)).forEach((s) => {
       const eski = !s.konum_ms || Date.now() - s.konum_ms > 30 * 60000;
       const renk = s.durum === 'Müsait' ? '#2ecc71' : s.durum === 'Meşgul' ? '#f5b041' : '#8a90a0';
-      const m = L.circleMarker([+s.enlem, +s.boylam], { radius: 8, color: renk, weight: 3, fillColor: '#fff', fillOpacity: eski ? 0.35 : 1, opacity: eski ? 0.6 : 1, dashArray: eski ? '3 3' : null })
-        .bindPopup('<b>' + esc(s.ad) + '</b><br>' + esc(s.durum || '') + (s.hiz != null ? ' · ' + esc(String(s.hiz)) + ' km/s' : '') + (s.konum_ms ? '<br>konum ' + sure(Date.now() - s.konum_ms) + ' önce' : ''));
-      kat.addLayer(m);
+      const m = L.circleMarker([+s.enlem, +s.boylam], { radius: 8, color: renk, weight: 3, fillColor: '#fff', fillOpacity: eski ? 0.35 : 1, opacity: eski ? 0.6 : 1, dashArray: eski ? '3 3' : null, mesgul: s.durum === 'Meşgul' })
+        .bindPopup('<b>' + esc(s.ad) + '</b><br>' + esc(s.durum || '') + (s.hiz != null ? ' · ' + esc(String(s.hiz)) + ' km/s' : '') + (s.konum_ms ? '<br>konum ' + once(s.konum_ms) : ''));
+      S.soforKume.addLayer(m);
       noktalar.push([+s.enlem, +s.boylam]);
     });
     talepler.filter((t) => !t.sessiz && t.nereden && sayiMi(t.nereden.enlem) && sayiMi(t.nereden.boylam)).forEach((t) => {
@@ -722,7 +739,13 @@
     S.karne = { hafta: k.hafta, veri: k.veri, okuyanlar: (ok || []).map((x) => x.kim), okuma: ok || [], ekip: (ek || []).map((x) => x.ad) };
     ciz();
   }
+  // v3: Chart.js varsa dokununca sayı gösteren grafik; yoksa eski CSS çubukları
   function cubuklar(dizi, etiketler, renk) {
+    if (window.Chart && dizi.length) {
+      const id = 'kg' + (S.gSay = (S.gSay || 0) + 1);
+      (S.gBekle = S.gBekle || []).push({ id, dizi, etiketler: dizi.length === 24 ? dizi.map((_, i) => String(i).padStart(2, '0') + ':00') : etiketler, renk });
+      return '<div class="kr-cv"><canvas id="' + id + '" height="160" role="img" aria-label="Talep grafiği"></canvas></div>';
+    }
     const en = Math.max(1, ...dizi);
     return '<div class="kr-grafik">' + dizi.map((n, i) => '<div class="kr-sut" title="' + esc(etiketler[i]) + ': ' + n + '"><i style="height:' + Math.round((n / en) * 100) + '%;background:' + renk + '"></i><span>' + esc(etiketler[i]) + '</span></div>').join('') + '</div>';
   }
@@ -762,7 +785,26 @@
       (okudum ? '<div class="serit" style="background:var(--yesilAcik);color:var(--mavi);margin-top:12px">✅ Okudun, teşekkürler.</div>' : '<button class="btn yesil" id="okudum" style="margin-top:12px">Okudum ✓</button>');
     return h;
   }
+  function grafikCiz() {
+    (S.grafikler || []).forEach((g) => g.destroy());
+    S.grafikler = [];
+    const cs = getComputedStyle(document.documentElement), v = (r) => (/^var\((.+)\)$/.test(r) ? cs.getPropertyValue(RegExp.$1).trim() : r);
+    (S.gBekle || []).forEach((g) => {
+      const el = document.getElementById(g.id);
+      if (!el) return;
+      S.grafikler.push(new Chart(el, {
+        type: 'bar',
+        data: { labels: g.etiketler, datasets: [{ data: g.dizi, backgroundColor: v(g.renk), borderRadius: 6, maxBarThickness: 34 }] },
+        // animasyon yok: panel her veri gelişinde yeniden çizilir, grafik titremesin
+        options: { animation: false, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ' ' + c.raw + ' talep' } } },
+          scales: { x: { grid: { display: false }, ticks: { color: v('var(--soluk)'), autoSkip: true, maxRotation: 0, font: { family: 'Barlow', weight: 600 } } },
+            y: { beginAtZero: true, grid: { color: v('var(--cizgi)') }, ticks: { color: v('var(--soluk)'), precision: 0 } } } }
+      }));
+    });
+    S.gBekle = [];
+  }
   function karneBagla() {
+    grafikCiz();
     const k = S.karne;
     if ($('okudum')) $('okudum').onclick = async () => {
       $('okudum').disabled = true;
@@ -885,7 +927,7 @@
       const s = x.s;
       h += '<button class="secim' + (S.secili === String(s.id) ? ' sec' : '') + '" data-sid="' + esc(s.id) + '"><span class="nokta" style="background:' +
         (s.durum === 'Müsait' ? 'var(--yesil)' : s.durum === 'Meşgul' ? 'var(--sari)' : '#555b69') + '"></span><span class="ad">' + esc(s.ad) +
-        '<small>' + esc(s.durum || '') + (x.k != null ? ' · ~' + kmYaz(x.k) : '') + (s.konum_ms ? ' · konum ' + sure(Date.now() - s.konum_ms) + ' önce' : '') + '</small></span></button>';
+        '<small>' + esc(s.durum || '') + (x.k != null ? ' · ~' + kmYaz(x.k) : '') + (s.konum_ms ? ' · konum ' + once(s.konum_ms) : '') + '</small></span></button>';
     });
     h += '<p style="margin:4px 0 12px"><a href="#" id="tumu" style="color:var(--mavi);font-size:13px">' + (S.tumu ? 'Yalnızca müsaitleri göster' : 'Meşgul / çevrimdışı şoförleri de göster') + '</a></p>' +
       '<div class="ikili"><button class="btn" id="ataVazgec">Vazgeç</button><button class="btn yesil" id="ataOnay"' + (S.secili ? '' : ' disabled') + '>Şoförü ata</button></div>' +

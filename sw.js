@@ -28,7 +28,9 @@ self.addEventListener('notificationclick', (e) => {
     return acik ? acik.focus() : self.clients.openWindow('./');
   }));
 });
-const KABUK = ['./', 'index.html', 'app.js', 'config.js', 'manifest.webmanifest'];
+const KABUK = ['./', 'index.html', 'app.js', 'config.js', 'manifest.webmanifest',
+  'kutuphane/leaflet.markercluster-1.5.3.js', 'kutuphane/MarkerCluster-1.5.3.css', 'kutuphane/chart-4.6.1.umd.min.js',
+  'kutuphane/dayjs-1.11.23.min.js', 'kutuphane/dayjs-1.11.23-relativeTime.js', 'kutuphane/dayjs-1.11.23-tr.js'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(AD).then((c) => c.addAll(KABUK)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== AD).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
@@ -38,9 +40,9 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || u.origin !== location.origin) return;   // bulut istekleri önbelleğe alınmaz
   // Önce ağ (güncel sürüm), ağ yoksa önbellek
   // cache: 'no-cache' → tarayıcının HTTP önbelleğine güvenme, sunucuya sor (yeni sürüm hemen gelsin)
+  // Sunucu hata verirse (GitHub kesintisi gibi) önbellekteki son sağlam sürümü göster; hata sayfası saklanmaz
   e.respondWith(fetch(e.request, { cache: 'no-cache' }).then((r) => {
-    const kopya = r.clone();
-    caches.open(AD).then((c) => c.put(e.request, kopya));
-    return r;
+    if (r.ok) { const kopya = r.clone(); caches.open(AD).then((c) => c.put(e.request, kopya)); return r; }
+    return caches.match(e.request).then((k) => k || r);
   }).catch(() => caches.match(e.request)));
 });

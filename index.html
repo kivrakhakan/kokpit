@@ -84,6 +84,7 @@ header h1{font-size:17px}
 .balon.o{background:var(--kart);border:1px solid var(--cizgi);align-self:flex-start}
 .balon.biz{background:#16233d;border:1px solid #2563eb;align-self:flex-end}
 textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--cizgi);background:var(--kart);color:var(--yazi);font:inherit;font-size:15px;resize:vertical}
+.kr-cv{position:relative;height:160px;margin:6px 0 4px}
 .kr-grafik{display:flex;align-items:flex-end;gap:3px;height:80px;margin:6px 0 2px}
 .kr-sut{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
 .kr-sut i{display:block;width:100%;min-height:2px;border-radius:3px 3px 0 0}
@@ -128,6 +129,8 @@ html,body{font-family:Barlow,system-ui,-apple-system,"Segoe UI",sans-serif;font-
 h1,h2,h3,.durum b,.sayi b{font-family:"Barlow Semi Condensed",Barlow,sans-serif}
 .kap{padding-top:0}
 html,body{overflow-x:hidden}
+.kume{background:var(--yesil);color:#fff;border-radius:50%;display:grid;place-items:center;font:800 16px "Barlow Semi Condensed",Barlow,sans-serif;box-shadow:0 0 0 5px #00b62155,0 3px 0 var(--yol)}
+.kume.mesgul{background:#d9620a;box-shadow:0 0 0 5px #d9620a55,0 3px 0 #8a3c00}
 .bant{margin:0 -16px 4px;padding:calc(10px + env(safe-area-inset-top)) 16px 34px;background:var(--yesil);color:#fff;position:relative;overflow:hidden}
 .bant::after{content:"";position:absolute;left:-12%;right:-12%;bottom:-1px;height:30px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0}
 .bant header{margin:0;position:relative;z-index:1}
@@ -292,8 +295,14 @@ input,textarea{background:var(--kart);border-color:var(--cizgi)}
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="kutuphane/MarkerCluster-1.5.3.css">
+<script src="kutuphane/leaflet.markercluster-1.5.3.js"></script>
+<script src="kutuphane/chart-4.6.1.umd.min.js"></script>
+<script src="kutuphane/dayjs-1.11.23.min.js"></script>
+<script src="kutuphane/dayjs-1.11.23-relativeTime.js"></script>
+<script src="kutuphane/dayjs-1.11.23-tr.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js?v=20261122"></script>
-<script src="app.js?v=20261122l"></script>
+<script src="app.js?v=20261122m"></script>
 </body>
 </html>
