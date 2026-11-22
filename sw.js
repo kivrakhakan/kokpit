@@ -1,5 +1,5 @@
 // Basit önbellek: uygulama kabuğu çevrimdışı da açılsın; veri her zaman canlı alınır.
-const AD = 'sb-kokpit-v3';
+const AD = 'sb-kokpit-v4';
 const FN = 'https://yajzvvvygskkhbvxghrc.supabase.co/functions/v1/push';
 const IKON = 'https://soforbey.com/static/img/ikon.png';
 
@@ -30,7 +30,8 @@ self.addEventListener('notificationclick', (e) => {
 });
 const KABUK = ['./', 'index.html', 'app.js', 'config.js', 'manifest.webmanifest',
   'kutuphane/leaflet.markercluster-1.5.3.js', 'kutuphane/MarkerCluster-1.5.3.css', 'kutuphane/chart-4.6.1.umd.min.js',
-  'kutuphane/dayjs-1.11.23.min.js', 'kutuphane/dayjs-1.11.23-relativeTime.js', 'kutuphane/dayjs-1.11.23-tr.js'];
+  'kutuphane/dayjs-1.11.23.min.js', 'kutuphane/dayjs-1.11.23-relativeTime.js', 'kutuphane/dayjs-1.11.23-tr.js',
+  'kutuphane/leaflet-1.9.4.js', 'kutuphane/leaflet-1.9.4.css', 'kutuphane/supabase-js-2.45.4.js'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(AD).then((c) => c.addAll(KABUK)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== AD).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
