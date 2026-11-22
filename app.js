@@ -271,7 +271,7 @@
     // 2026-11-22: "Aktif şoförler" Özet'ten kaldırıldı (kullanıcı: Özet ile Operasyon aynı); şoför listesi yalnız Operasyon'da
 
     // Harita (talepler + şoförler). Harita bir kez kurulur, her çizimde yerine taşınır (yeniden yüklenmesin)
-    // v3: Harita ayrı sekme değil, Operasyon'da SOS kartının altında (alt menü 7 → 5 düğme)
+    // v3: Harita ayrı sekme değil, Operasyon'da; 2026-11-23'ten beri sekmenin EN ALTINDA (ödemelerin altı)
     let haritaH = '';
     if (window.L) {
       haritaH += '<div class="kart"><h2>Harita <span>' + talepler.filter((t) => t.nereden && sayiMi(t.nereden.enlem)).length + ' talep · ' +
@@ -284,7 +284,6 @@
     // Talepler
     h += '§talep§';
     h += sosH;
-    h += haritaH;
     h += '<div class="kart"><h2>Atama bekleyen talepler <span>' + e.soft + ' · ' + e.alarm + ' · ' + e.acil + ' dk</span></h2>';
     if (!talepler.length) h += maskotBos('yolunda', 'Bekleyen talep yok', 'Yeni talep gelince burada görünür.');
     talepler.forEach((t, i) => {
@@ -340,6 +339,8 @@
       if (!(od.iban || []).length) h += '<div class="bos">Ayrıntı için bilgisayarda Ödemeler sayfasını açın.</div>';
       h += '</div>';
     }
+    // Harita en altta (2026-11-23 kullanıcı: üstte durunca alttaki talepler/işler görünmüyordu)
+    h += haritaH;
 
     // Şoförler sekmesi: ehliyet yenilemeleri, anlık durum, başvurular, kayıtlar (yalnızca görüntüleme; işlem sitede)
     h += '§sofor§';
