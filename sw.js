@@ -1,7 +1,7 @@
 // Basit önbellek: uygulama kabuğu çevrimdışı da açılsın; veri her zaman canlı alınır.
-const AD = 'sb-kokpit-v4';
+const AD = 'sb-kokpit-v5';
 const FN = 'https://yajzvvvygskkhbvxghrc.supabase.co/functions/v1/push';
-const IKON = 'https://soforbey.com/static/img/ikon.png';
+const IKON = 'ikon-192.png';   // Kokpit simgesi (gözlü "Sade" logo); eskiden Şoför Bey sitesinin simgesiydi
 
 // Telefon bildirimi: itme içeriksiz gelir, metin buluttan (yalnızca kayıtlı aboneye) okunur
 self.addEventListener('push', (e) => {
