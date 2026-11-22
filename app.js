@@ -9,11 +9,11 @@
   const DEMO = /[?&]demo=1/.test(location.search);
   // Panelin "Yenilikler" kartı (her yeni sürümde surum değişir, maddeler yenilenir)
   const YENILIK = {
-    surum: '2026-11-22c', tarih: '22 Kasım',
+    surum: '2026-11-22d', tarih: '22 Kasım',
     maddeler: [
-      ['Rezervasyona şoför atama. ', 'Operasyon sekmesindeki İleri rezervasyonlar listesinde, şoförü atanmamış rezervasyonun yanında artık "Şoför ata" düğmesi var.'],
-      ['Tüm şoförler listelenir. ', 'Rezervasyon ileri tarihli olduğu için şu an meşgul ya da çevrimdışı olan şoförler de seçilebilir.'],
-      ['Atamayı bilgisayar yapar. ', 'Açık olan bilgisayardaki eklenti birkaç saniyede atamayı yapar ve ekibe Telegram ile bildirir.']
+      ['Hız uyarısı. ', 'İşteki bir şoför art arda iki ölçümde 130 km/s\'i geçerse Telegram ve telefon bildirimi gelir, Özet\'te uyarı satırı çıkar.'],
+      ['Şoför hızı görünür. ', 'Şoför listesinde ve haritada, işteki şoförün son ölçülen hızı yazar.'],
+      ['Telefona bir şey kurulmaz. ', 'Hız, şoför uygulamasının zaten gönderdiği konumdan hesaplanır; uygulama kapalıysa ölçülemez.']
     ]
   };
   const $ = (id) => document.getElementById(id);
@@ -233,6 +233,7 @@
     if (odSayi) yap.push(['kart', odSayi + ' ödeme onay bekliyor', 'admin/odemeler']);
     if (aktif.some((t) => t.yasDk >= e.acil)) yap.push(['arac', 'ACİL: ' + aktif.filter((t) => t.yasDk >= e.acil).length + ' talep ' + e.acil + ' dk\'dan uzun süredir şoför bekliyor', 'admin/operasyon-merkezi']);
     if (aktif.length && !musait.length) yap.push(['uyari', 'Müsait şoför yok; şoförleri arayın', 'admin/soforler']);
+    if (!bayat) soforler.filter((s) => s.hiz_uyari).forEach((s) => yap.unshift(['uyari', 'Hız uyarısı: ' + (s.ad || 'Şoför') + ' ~' + s.hiz_uyari.kmh + ' km/s' + (s.hiz != null ? ' (şu an ' + s.hiz + ')' : ''), 'admin/operasyon-merkezi']));
     if (+say.incelenen_sos > 0 && !sosList.length) yap.push(['ara', say.incelenen_sos + ' SOS incelemede', 'admin/operasyon-merkezi']);
     const basv = Array.isArray(d.basvurular) ? d.basvurular : [];
     // "Cevap gerekmiyor" işaretlenenler kişi yeniden yazana kadar gizli (anahtar son mesaja bağlı)
@@ -341,7 +342,7 @@
     sfSira.forEach((s, i) => {
       const renk = s.durum === 'Müsait' ? 'var(--yesil)' : s.durum === 'Meşgul' ? 'var(--sari)' : '#555b69';
       h += '<div class="sf"><span class="nokta" style="background:' + renk + '"></span><div class="ad tikla" data-sofor="' + i + '">' + esc(s.ad) +
-        '<small>' + esc(s.durum || '?') + (s.konum_ms ? ' · konum ' + sure(now - s.konum_ms) + ' önce' : '') + '</small></div>' +
+        '<small>' + esc(s.durum || '?') + (s.hiz != null ? ' · ' + esc(String(s.hiz)) + ' km/s' : '') + (s.konum_ms ? ' · konum ' + sure(now - s.konum_ms) + ' önce' : '') + '</small></div>' +
         (s.telefon ? '<a class="tel" href="tel:' + esc(String(s.telefon).replace(/[^\d+]/g, '')) + '">Ara</a>' : '') + '</div>';
     });
     h += '</div>';
@@ -558,7 +559,7 @@
       const eski = !s.konum_ms || Date.now() - s.konum_ms > 30 * 60000;
       const renk = s.durum === 'Müsait' ? '#2ecc71' : s.durum === 'Meşgul' ? '#f5b041' : '#8a90a0';
       const m = L.circleMarker([+s.enlem, +s.boylam], { radius: 8, color: renk, weight: 3, fillColor: '#fff', fillOpacity: eski ? 0.35 : 1, opacity: eski ? 0.6 : 1, dashArray: eski ? '3 3' : null })
-        .bindPopup('<b>' + esc(s.ad) + '</b><br>' + esc(s.durum || '') + (s.konum_ms ? '<br>konum ' + sure(Date.now() - s.konum_ms) + ' önce' : ''));
+        .bindPopup('<b>' + esc(s.ad) + '</b><br>' + esc(s.durum || '') + (s.hiz != null ? ' · ' + esc(String(s.hiz)) + ' km/s' : '') + (s.konum_ms ? '<br>konum ' + sure(Date.now() - s.konum_ms) + ' önce' : ''));
       kat.addLayer(m);
       noktalar.push([+s.enlem, +s.boylam]);
     });
@@ -997,7 +998,7 @@
       soforler: [
         { id: 1, ad: 'Mehmet Y.', durum: 'Müsait', cevrimici: true, enlem: 37.86, boylam: 27.27, konum_ms: n - 3 * 1440 * dk, telefon: '+905550000001' },
         { id: 2, ad: 'Ali K.', durum: 'Müsait', cevrimici: true, enlem: 37.94, boylam: 27.36, konum_ms: n - 4 * dk },
-        { id: 3, ad: 'Hasan D.', durum: 'Meşgul', cevrimici: true },
+        { id: 3, ad: 'Hasan D.', durum: 'Meşgul', cevrimici: true, hiz: 118, hiz_uyari: { t: n - 4 * dk, kmh: 137 } },
         { id: 4, ad: 'Emre C.', durum: 'Çevrimdışı', cevrimici: false }
       ],
       odemeler: { rozet: 1, iban: [{ ref: 'SB-48213', tutar: '1.850 TL', yas_dk: 12 }] },
