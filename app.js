@@ -434,7 +434,7 @@
       });
       h += '</div>';
     }
-    h += '<button class="satir yap tur-ac" id="turAc">' + ik('ara') + '<div class="ad">Kokpit\'i tanı<small>Hangi bölüm ne işe yarar, 1 dakikalık tur</small></div><span class="ok">›</span></button>';
+    h += '<div class="kart"><button class="satir yap" id="turAc">' + ik('ara') + '<div class="ad">Kokpit\'i tanı<small>Hangi bölüm ne işe yarar, 1 dakikalık tur</small></div><span class="ok">›</span></button></div>';
 
     // Kayıtlar sekmesi (v3): içerik kalıcı bölümdür, çizimden sonra yerine taşınır
     h += '§kayit§<div id="kayitYer"></div>';
