@@ -345,6 +345,22 @@
       });
       h += '<div class="bos" style="padding-top:6px">Onay ve red sitede yapılır; satıra dokununca açılır.</div></div>';
     }
+    // Şoför kayıtları (soforbey.com /admin/soforler): eksik belgeler önce. Kullanıcı isteğiyle sekmenin üstünde (başvuruların altında kalıyordu)
+    const kay = sk && Array.isArray(sk.kayitlar) ? sk.kayitlar : [];
+    const eksikler = (k) => (k.belgeler || []).filter((b) => !b.var).map((b) => b.ad);
+    h += '<div class="kart"><h2>Şoför kayıtları <span>' + kay.length + skOku + '</span></h2>';
+    if (!sk) h += maskotBos('bekliyor', 'Kayıtlar henüz gelmedi', 'Bilgisayardaki eklenti 5 dakikada bir okur.');
+    kay.slice().sort((a, b) => eksikler(b).length - eksikler(a).length).forEach((k) => {
+      const ek = eksikler(k);
+      const tel = String(k.tel || '').replace(/[^\d+]/g, '');
+      h += '<div class="sf"><span class="nokta" style="background:' + (ek.length ? 'var(--sari)' : 'var(--yesil)') + '"></span><div class="ad">' + esc(k.ad || 'Şoför') +
+        '<small>#' + esc(k.no) + ' · ' + esc(k.arac || '?') + (k.durum && k.durum !== 'Aktif' ? ' · ' + esc(k.durum) : '') + '</small>' +
+        '<small style="color:' + (ek.length ? 'var(--sari)' : 'var(--yesil)') + '">' + (ek.length ? 'Eksik: ' + esc(ek.join(', ')) : 'Belgeler tamam') + '</small>' +
+        (k.edevlet ? '<small>e-Devlet: ' + esc(k.edevlet) + (k.edevlet_kontrol ? ' · ' + esc(k.edevlet_kontrol) : '') + '</small>' : '') + '</div>' +
+        (tel ? '<a class="tel" href="tel:' + esc(tel) + '">' + ik('tel') + 'Ara</a>' : '') + '</div>';
+    });
+    if (sk) h += '<a class="satir yap" href="' + ADMIN + 'admin/soforler" target="_blank" rel="noopener">' + ik('belge') + '<div class="ad">Belgeleri ve düzenlemeyi sitede aç</div><span class="ok">›</span></a>';
+    h += '</div>';
     const sira = { 'Müsait': 0, 'Meşgul': 1 };
     h += '<div class="kart"><h2>Anlık durum <span>' + musait.length + ' müsait / ' + soforler.length + '</span></h2>';
     if (!soforler.length) h += '<div class="bos">Şoför bilgisi yok.</div>';
@@ -401,23 +417,6 @@
       });
       h += '</div>';
     }
-
-    // Şoför kayıtları (soforbey.com /admin/soforler): eksik belgeler önce
-    const kay = sk && Array.isArray(sk.kayitlar) ? sk.kayitlar : [];
-    const eksikler = (k) => (k.belgeler || []).filter((b) => !b.var).map((b) => b.ad);
-    h += '<div class="kart"><h2>Şoför kayıtları <span>' + kay.length + skOku + '</span></h2>';
-    if (!sk) h += maskotBos('bekliyor', 'Kayıtlar henüz gelmedi', 'Bilgisayardaki eklenti 5 dakikada bir okur.');
-    kay.slice().sort((a, b) => eksikler(b).length - eksikler(a).length).forEach((k) => {
-      const ek = eksikler(k);
-      const tel = String(k.tel || '').replace(/[^\d+]/g, '');
-      h += '<div class="sf"><span class="nokta" style="background:' + (ek.length ? 'var(--sari)' : 'var(--yesil)') + '"></span><div class="ad">' + esc(k.ad || 'Şoför') +
-        '<small>#' + esc(k.no) + ' · ' + esc(k.arac || '?') + (k.durum && k.durum !== 'Aktif' ? ' · ' + esc(k.durum) : '') + '</small>' +
-        '<small style="color:' + (ek.length ? 'var(--sari)' : 'var(--yesil)') + '">' + (ek.length ? 'Eksik: ' + esc(ek.join(', ')) : 'Belgeler tamam') + '</small>' +
-        (k.edevlet ? '<small>e-Devlet: ' + esc(k.edevlet) + (k.edevlet_kontrol ? ' · ' + esc(k.edevlet_kontrol) : '') + '</small>' : '') + '</div>' +
-        (tel ? '<a class="tel" href="tel:' + esc(tel) + '">' + ik('tel') + 'Ara</a>' : '') + '</div>';
-    });
-    if (sk) h += '<a class="satir yap" href="' + ADMIN + 'admin/soforler" target="_blank" rel="noopener">' + ik('belge') + '<div class="ad">Belgeleri ve düzenlemeyi sitede aç</div><span class="ok">›</span></a>';
-    h += '</div>';
 
     // Son işlemler (özet sekmesinde)
     h += '§ozet§';
