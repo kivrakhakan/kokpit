@@ -1006,6 +1006,19 @@
       document.head.appendChild(st);
     }
     S.turAcik = true;
+    // Karartmanın ortasında saydam Şoför Bey logosu (iki nokta + kemer + ok, logo yeşili); tıklamaları engellemez
+    if (!$('tur-logo')) {
+      const lg = document.createElement('div');
+      lg.id = 'tur-logo';
+      lg.setAttribute('aria-hidden', 'true');
+      lg.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:10001;opacity:0;transition:opacity .4s ease';
+      lg.innerHTML = '<svg viewBox="0 20 240 220" style="width:min(62vmin,420px);height:auto;opacity:.13" fill="#00b621">' +
+        '<circle cx="94" cy="74" r="17"/><circle cx="146" cy="74" r="17"/>' +
+        '<path d="M48 180 A72 72 0 0 1 192 180 L152 180 A32 32 0 0 0 88 180 Z"/>' +
+        '<path d="M120 162 L170 222 Q173 230 164 228 L120 215 L76 228 Q67 230 70 222 Z" stroke="#00b621" stroke-width="4" stroke-linejoin="round"/></svg>';
+      document.body.appendChild(lg);
+      requestAnimationFrame(() => { lg.style.opacity = '1'; });
+    }
     const adim = TUR_ADIM.filter((a) => document.querySelector('.altmenu [data-sekme="' + a[0] + '"]'))
       .map((a) => ({ element: '.altmenu [data-sekme="' + a[0] + '"]', popover: { title: a[1], description: a[2], side: 'top', align: 'center' } }));
     adim.push({ popover: { title: 'Son bir şey', description: 'Atama, bildirim ve arama gibi işlemleri Operasyon Merkezi açık olan bilgisayardaki eklenti yapar. O sayfanın bir bilgisayarda hep açık kalması gerekir. Bu turu Özet\'in en altından tekrar açabilirsin.' } });
@@ -1014,6 +1027,8 @@
       nextBtnText: 'İleri', prevBtnText: 'Geri', doneBtnText: 'Bitir', allowClose: true, overlayOpacity: 0.6,
       onDestroyed: () => {
         try { localStorage.setItem('sb_tur_gordu', '1'); } catch (x) { /* önemsiz */ }
+        const lg = $('tur-logo');
+        if (lg) { lg.style.opacity = '0'; setTimeout(() => lg.remove(), 400); }
         S.turAcik = false;
         if (S.turBekleyen) { S.turBekleyen = false; ciz(); }
       }
