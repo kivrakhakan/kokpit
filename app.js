@@ -452,6 +452,7 @@
         '<div class="kom" style="white-space:pre-line">' + esc(d.gunsonu.metin) + '</div></div>';
     }
     h += '<div class="kart">' + karneIcerik() + '</div>';
+    h += cihazKarti();
 
     // Yalnızca açık sekmeyi göster; alt menü
     const B = S.sekme || 'ozet';
@@ -1248,6 +1249,46 @@
     return { q, tur: 'hepsi', at: Date.now(), kayitlar: l };
   }
 
+  /* ---------------- v3: kim hangi cihazda, hangi sürümle (cihaz_izi) ---------------- */
+  const PANEL_V = ((document.querySelector('script[src*="app.js?v="]') || {}).src || '').replace(/.*v=/, '') || 'uygulama içi kopya';
+  function cihazBilgi() {
+    const ua = navigator.userAgent, tek = !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
+    const ap = ua.match(/SBKokpit\/([\w.?-]+)/);
+    const cihaz = window.ReactNativeWebView ? 'Android uygulama' : /iPhone|iPad/.test(ua) ? (tek ? 'iPhone ana ekran' : 'iPhone tarayıcı')
+      : /Android/.test(ua) ? (tek ? 'Android ana ekran' : 'Android tarayıcı') : 'Bilgisayar';
+    return { cihaz, uygulama_surum: ap ? ap[1].replace(/-(\d+)$/, ' (kod $1)') : (window.ReactNativeWebView ? '1.5.0 veya eski' : null) };
+  }
+  async function cihazIzi() {
+    if (!S.ekip) return;
+    if (DEMO) {
+      const n = Date.now();
+      S.cihazlar = [
+        { kim: 'Burhan', cihaz: 'Android uygulama', panel_surum: PANEL_V, uygulama_surum: '1.5.0 (kod 6)', son_gorulme: new Date(n - 60000).toISOString() },
+        { kim: 'Hakan', cihaz: 'iPhone ana ekran', panel_surum: PANEL_V, uygulama_surum: null, son_gorulme: new Date(n - 3 * 3600000).toISOString() },
+        { kim: 'Cio', cihaz: 'iPhone tarayıcı', panel_surum: '20261120a', uygulama_surum: null, son_gorulme: new Date(n - 4 * 86400000).toISOString() }
+      ];
+      return;
+    }
+    const b = cihazBilgi();
+    await S.db.from('cihaz_izi').upsert({ kim: S.ekip.ad, cihaz: b.cihaz, panel_surum: PANEL_V, uygulama_surum: b.uygulama_surum, son_gorulme: new Date().toISOString() }, { onConflict: 'kim,cihaz' });
+    const { data } = await S.db.from('cihaz_izi').select('kim,cihaz,panel_surum,uygulama_surum,son_gorulme').order('son_gorulme', { ascending: false });
+    S.cihazlar = data || [];
+    if (S.sekme === 'karne') ciz();
+  }
+  // Rapor sekmesindeki "Ekip cihazları" kartı: eski panel sürümü ya da 3 günden uzun açılmamışsa sarı
+  function cihazKarti() {
+    const l = S.cihazlar || [];
+    if (!l.length) return '';
+    const eskiGun = 3 * 86400000;
+    return '<div class="kart"><h2>Ekip cihazları <span>panel ' + esc(PANEL_V) + '</span></h2>' + l.map((c) => {
+      const yas = Date.now() - Date.parse(c.son_gorulme);
+      const eski = (c.panel_surum && c.panel_surum !== PANEL_V && c.panel_surum !== 'uygulama içi kopya') || yas > eskiGun;
+      return '<div class="sf"><span class="nokta" style="background:' + (eski ? 'var(--sari)' : 'var(--yesil)') + '"></span><div class="ad">' + esc(c.kim) +
+        '<small>' + esc(c.cihaz) + (c.uygulama_surum ? ' · uygulama ' + esc(c.uygulama_surum) : '') + ' · panel ' + esc(c.panel_surum || '?') + '</small>' +
+        '<small style="color:' + (yas > eskiGun ? 'var(--sari)' : 'var(--soluk)') + '">Son açılış ' + once(c.son_gorulme) + '</small></div></div>';
+    }).join('') + '</div>';
+  }
+
   /* ---------------- bulut işlemleri ---------------- */
   async function komutGonder(k, btn, ad) {
     if (btn) btn.disabled = true;
@@ -1304,6 +1345,8 @@
     S.ekip = ek;
     await durumYukle();
     await komutlariYukle();
+    cihazIzi().catch(() => { /* kayıt yazılamazsa panel yine çalışır */ });
+    setInterval(() => { if (!document.hidden) cihazIzi().catch(() => {}); }, 10 * 60000);
     await tikleriYukle();
     karneYukle();
     if (location.hash === '#karne') setTimeout(karneAc, 800);
@@ -1326,6 +1369,7 @@
   function demo() {
     const n = Date.now(), dk = 60000;
     S.ekip = { ad: 'Demo', rol: 'yonetici' };
+    cihazIzi();
     S.guncelleme = n - 8000;
     S.durum = {
       v: 1, at: n - 8000, merkez: 'Ofis bilgisayarı', sayfa: 'atama', esikler: { soft: 3, alarm: 5, acil: 10 },
