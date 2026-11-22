@@ -9,8 +9,10 @@
   const DEMO = /[?&]demo=1/.test(location.search);
   // Panelin "Yenilikler" kartı (her yeni sürümde surum değişir, maddeler yenilenir)
   const YENILIK = {
-    surum: '2026-11-22f', tarih: '22 Kasım',
+    surum: '2026-11-22g', tarih: '22 Kasım',
     maddeler: [
+      ['Kokpit\'i tanı. ', 'Hangi sekme ne işe yarar, 1 dakikalık tur. İlk açılışta kendiliğinden gelir; Özet\'in en altından tekrar açılır.'],
+      ['Raporu PDF indir. ', 'Haftalık raporun altındaki düğmeyle rapor Türkçe harflerle PDF olarak iner (bilgisayarda ve telefon tarayıcısında).'],
       ['Yeni sekme: Kayıtlar. ', 'Müşteri adı, telefon ya da iş numarasıyla iş, ilan ve üye ara. Bir sonuca dokununca ayrıntısı, arama düğmesi ve sitedeki sayfası açılır.'],
       ['Uygulama bildirimi gönder. ', 'Şoförlere, müşterilere, herkese ya da tek bir üyeye telefon bildirimi. Göndermeden önce telefonda nasıl görüneceği gösterilir (yalnız yöneticiler).'],
       ['Haritada gruplama. ', 'Yan yana duran şoförler tek yuvarlakta toplanır, üstünde kaç kişi olduğu yazar. Yakınlaştırınca ayrılırlar. Talep ve SOS noktaları hep ayrı görünür.'],
@@ -142,6 +144,8 @@
   }
 
   function ciz() {
+    // v3 tanıtım turu açıkken menü yeniden çizilirse tur yerini kaybeder; tur bitince bir kez çizilir
+    if (S.turAcik) { S.turBekleyen = true; return; }
     const d = S.durum || {};
     const now = Date.now();
     const e = d.esikler || { soft: 3, alarm: 5, acil: 10 };
@@ -430,6 +434,7 @@
       });
       h += '</div>';
     }
+    h += '<button class="satir yap tur-ac" id="turAc">' + ik('ara') + '<div class="ad">Kokpit\'i tanı<small>Hangi bölüm ne işe yarar, 1 dakikalık tur</small></div><span class="ok">›</span></button>';
 
     // Kayıtlar sekmesi (v3): içerik kalıcı bölümdür, çizimden sonra yerine taşınır
     h += '§kayit§<div id="kayitYer"></div>';
@@ -493,6 +498,13 @@
     document.querySelectorAll('[data-sekme]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); sekmeAc(a.dataset.sekme); }; });
     if (B === 'karne') karneBagla();
     if (S.ata) cizAta();
+    if ($('turAc')) $('turAc').onclick = () => turBaslat();
+    if (!S.turDenendi && S.ekip) {   // ilk kez açan kişiye bir kez kendiliğinden gösterilir
+      S.turDenendi = true;
+      let g = null;
+      try { g = localStorage.getItem('sb_tur_gordu'); } catch (x) { /* önemsiz */ }
+      if (!g) setTimeout(() => turBaslat(), 1500);
+    }
   }
   function sekmeAc(s) {
     S.sekme = s;
@@ -788,6 +800,7 @@
         const o = k.okuma.find((x) => x.kim === a);
         return '<div class="kom">' + (o ? '✅ <b>' + esc(a) + '</b> · ' + new Date(o.zaman).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '⏳ <b>' + esc(a) + '</b> · henüz okumadı') + '</div>';
       }).join('') +
+      '<button class="btn" id="karnePdf" style="margin-top:12px">PDF olarak indir</button>' +
       (okudum ? '<div class="serit" style="background:var(--yesilAcik);color:var(--mavi);margin-top:12px">✅ Okudun, teşekkürler.</div>' : '<button class="btn yesil" id="okudum" style="margin-top:12px">Okudum ✓</button>');
     return h;
   }
@@ -811,6 +824,7 @@
   }
   function karneBagla() {
     grafikCiz();
+    if ($('karnePdf')) $('karnePdf').onclick = () => raporPdf($('karnePdf'));
     const k = S.karne;
     if ($('okudum')) $('okudum').onclick = async () => {
       $('okudum').disabled = true;
@@ -951,6 +965,109 @@
     };
   }
   function ataKapat() { S.ata = null; const p = $('ataPerde'); if (p) p.remove(); }
+
+  /* ---------------- v3: gerektiğinde yüklenen kütüphaneler (tanıtım turu, PDF) ---------------- */
+  const YUKLENEN = {};
+  function yukle(dosya) {   // kutuphane/ içinden bir kez yükler; açılışı yavaşlatmaz
+    if (!YUKLENEN[dosya]) {
+      YUKLENEN[dosya] = new Promise((ok, red) => {
+        const css = /\.css$/.test(dosya);
+        const el = document.createElement(css ? 'link' : 'script');
+        if (css) { el.rel = 'stylesheet'; el.href = 'kutuphane/' + dosya; } else { el.src = 'kutuphane/' + dosya; }
+        el.onload = ok;
+        el.onerror = () => { delete YUKLENEN[dosya]; red(new Error(dosya + ' yüklenemedi')); };
+        document.head.appendChild(el);
+      });
+    }
+    return YUKLENEN[dosya];
+  }
+  const TUR_ADIM = [
+    ['ozet', 'Özet', 'Her şey yolunda mı, tek bakışta. Bekleyen talep, SOS ve senin yapman gerekenler burada.'],
+    ['harita', 'Harita', 'Şoförlerin ve bekleyen taleplerin yeri. Yan yana duran şoförler tek yuvarlakta toplanır; yakınlaşınca ayrılır.'],
+    ['talep', 'Operasyon', 'Atama bekleyen talepler, aktif yolculuklar, ileri rezervasyonlar ve SOS. Şoför atamayı buradan yaparsın.'],
+    ['destek', 'Destek', 'Cevap bekleyen mesajlar. "Yanıtla" ile buradan cevap yazarsın.'],
+    ['sofor', 'Şoförler', 'Şoför kayıtları, eksik belgeler, anlık durum ve yeni başvurular.'],
+    ['kayit', 'Kayıtlar', 'İş, ilan ve üye ara; şoförlere ya da müşterilere uygulama bildirimi gönder.'],
+    ['karne', 'Rapor', 'Günlük ve haftalık rapor, grafikler. Haftalık raporu PDF olarak indirebilirsin.']
+  ];
+  async function turBaslat() {
+    try {
+      await Promise.all([yukle('driver-1.10.2.css'), yukle('driver-1.10.2.iife.js')]);
+    } catch (e) { bildir('Tanıtım açılamadı: ' + e.message); return; }
+    if (!$('tur-stil')) {   // turun görünüşü panelin renk ve yazısına uyar
+      const st = document.createElement('style');
+      st.id = 'tur-stil';
+      st.textContent = '.driver-popover.sb-tur{background:var(--kart);color:var(--yazi);border-radius:18px;padding:16px;font-family:Barlow,system-ui,sans-serif;max-width:300px}' +
+        '.sb-tur .driver-popover-title{font:800 19px "Barlow Semi Condensed",Barlow,sans-serif}.sb-tur .driver-popover-description{font-size:15px;line-height:1.45;color:var(--yazi)}' +
+        '.sb-tur .driver-popover-progress-text{color:var(--soluk);font-weight:600}.sb-tur .driver-popover-arrow{border-color:var(--kart)}' +
+        '.sb-tur .driver-popover-footer button{font:700 15px Barlow,sans-serif;border-radius:12px;padding:8px 14px;text-shadow:none;border:0;background:var(--bg);color:var(--yazi)}' +
+        '.sb-tur .driver-popover-footer .driver-popover-next-btn{background:var(--yesil);color:#fff}' +
+        '.sb-tur .driver-popover-close-btn{color:var(--soluk)}';
+      document.head.appendChild(st);
+    }
+    S.turAcik = true;
+    const adim = TUR_ADIM.filter((a) => document.querySelector('.altmenu [data-sekme="' + a[0] + '"]'))
+      .map((a) => ({ element: '.altmenu [data-sekme="' + a[0] + '"]', popover: { title: a[1], description: a[2], side: 'top', align: 'center' } }));
+    adim.push({ popover: { title: 'Son bir şey', description: 'Atama, bildirim ve arama gibi işlemleri Operasyon Merkezi açık olan bilgisayardaki eklenti yapar. O sayfanın bir bilgisayarda hep açık kalması gerekir. Bu turu Özet\'in en altından tekrar açabilirsin.' } });
+    const tur = window.driver.js.driver({
+      steps: adim, showProgress: true, progressText: '{{current}} / {{total}}', popoverClass: 'sb-tur',
+      nextBtnText: 'İleri', prevBtnText: 'Geri', doneBtnText: 'Bitir', allowClose: true, overlayOpacity: 0.6,
+      onDestroyed: () => {
+        try { localStorage.setItem('sb_tur_gordu', '1'); } catch (x) { /* önemsiz */ }
+        S.turAcik = false;
+        if (S.turBekleyen) { S.turBekleyen = false; ciz(); }
+      }
+    });
+    tur.drive();
+  }
+  // Haftalık raporu PDF olarak indirir (Türkçe harfler için pdfmake'in Roboto yazı tipi; ~1,7 MB yalnız ilk basışta yüklenir)
+  async function raporPdf(btn) {
+    const k = S.karne;
+    if (!k) return;
+    if (window.ReactNativeWebView) { bildir('PDF indirme uygulamada çalışmıyor; tarayıcıdaki Kokpit\'ten indir.'); return; }
+    btn.disabled = true;
+    const eski = btn.textContent;
+    btn.textContent = 'PDF hazırlanıyor…';
+    try {
+      await yukle('pdfmake-0.3.13.min.js');
+      await yukle('pdfmake-0.3.13-vfs_fonts.js');
+      const v = k.veri || {};
+      const tarih = String(k.hafta).split('-').reverse().join('.');
+      const gunAd = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+      const tablo = (bas, satirlar) => ({ table: { headerRows: 1, widths: ['*', 'auto'], body: [bas.map((x) => ({ text: x, bold: true }))].concat(satirlar.length ? satirlar : [['Kayıt yok', '']]) }, layout: 'lightHorizontalLines', margin: [0, 4, 0, 12] });
+      const kisiler = (a) => (a || []).map((x) => [String(x.kim || x.ad || ''), String(x.n)]);
+      const resimler = (S.grafikler || []).map((g) => { try { return g.toBase64Image('image/png', 1); } catch (x) { return null; } }).filter(Boolean);
+      const dd = {
+        info: { title: 'Şoför Bey haftalık rapor ' + tarih },
+        defaultStyle: { font: 'Roboto', fontSize: 11 },
+        content: [
+          { text: 'Şoför Bey · Haftalık rapor', fontSize: 20, bold: true, color: '#0a5a1c' },
+          { text: tarih + ' haftası (pazartesi–pazar)', color: '#5a6f60', margin: [0, 2, 0, 14] },
+          { columns: [
+            { stack: [{ text: String(v.talep || 0), fontSize: 22, bold: true }, { text: 'Talep', color: '#5a6f60' }] },
+            { stack: [{ text: v.ort_dk != null ? String(v.ort_dk).replace('.', ',') + ' dk' : '–', fontSize: 22, bold: true }, { text: 'Ortalama atama', color: '#5a6f60' }] },
+            { stack: [{ text: String(v.acil || 0), fontSize: 22, bold: true, color: v.acil ? '#e5253b' : '#00b621' }, { text: 'ACİL', color: '#5a6f60' }] }
+          ], margin: [0, 0, 0, 14] },
+          { text: '5 dakikada atanan: %' + (v.talep ? Math.round((v.hizli / v.talep) * 100) : 0) + ' · en uzun bekleme: ' + (v.en_uzun_dk != null ? v.en_uzun_dk + ' dk' : '–'), margin: [0, 0, 0, 12] },
+          { text: 'Günlere göre talep', bold: true },
+          tablo(['Gün', 'Talep'], (v.gunler || []).map((n, i) => [gunAd[i] || String(i), String(n)])),
+          resimler.length ? { image: resimler[0], width: 480, margin: [0, 0, 0, 12] } : '',
+          { text: 'En çok talep gelen yerler', bold: true },
+          tablo(['Yer', 'Talep'], kisiler(v.ilceler)),
+          { text: 'Ekip: alarm "Gördüm"', bold: true },
+          tablo(['Kişi', 'Sayı'], kisiler(v.gordum)),
+          { text: 'Ekip: panelden şoför atama', bold: true },
+          tablo(['Kişi', 'Sayı'], kisiler(v.panel_atama)),
+          { text: 'Oluşturma: ' + new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }) + ' · Kokpit', fontSize: 9, color: '#5a6f60', margin: [0, 10, 0, 0] }
+        ]
+      };
+      await pdfMake.createPdf(dd).download('sofor-bey-rapor-' + k.hafta + '.pdf');
+    } catch (e) {
+      bildir('PDF hazırlanamadı: ' + e.message);
+    }
+    btn.disabled = false;
+    btn.textContent = eski;
+  }
 
   /* ---------------- v3 Kayıtlar: arama + uygulama bildirimi ----------------
      Bölüm bir kez kurulur ve her çizimde yerine taşınır (panel sık yeniden çizilir; yazılan metin kaybolmasın). */
