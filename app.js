@@ -145,9 +145,58 @@
     }
   }
 
+  // ---- Alarm sesi (2026-11-23): panel açıkken alarm aktifse "Gördüm" denene kadar tekrarlayan uyarı sesi ----
+  // Kütüphanesiz (Web Audio). Telefon uygulamasının içinde çalmaz: orada telefon kendisi çalar (1.8.0).
+  // Tarayıcı sesi ancak bir dokunuştan sonra açar → "Alarm sesini aç" düğmesi; seçim sb_ses'te hatırlanır.
+  const SES = { ctx: null, zaman: null, susYerel: 0 };
+  const sesIzinli = () => { try { return localStorage.getItem('sb_ses') === '1'; } catch (e) { return false; } };
+  function sesAc() {
+    try {
+      SES.ctx = SES.ctx || new (window.AudioContext || window.webkitAudioContext)();
+      try { localStorage.setItem('sb_ses', '1'); } catch (e) { }
+      if (SES.ctx.state !== 'running') { SES.ctx.resume().then(sesKontrol, () => { }); return; }
+    } catch (e) { }
+    sesKontrol();
+  }
+  function sesBip() {
+    const c = SES.ctx; if (!c || c.state !== 'running') return;
+    const g = c.createGain(); g.connect(c.destination);
+    const t0 = c.currentTime;
+    for (let i = 0; i < 6; i++) {   // iki tonlu siren, ~1,5 sn
+      const o = c.createOscillator(); o.type = 'square'; o.frequency.value = i % 2 ? 660 : 880;
+      o.connect(g); o.start(t0 + i * 0.25); o.stop(t0 + i * 0.25 + 0.22);
+    }
+    g.gain.setValueAtTime(0.18, t0);
+  }
+  function sesKontrol() {
+    if (window.ReactNativeWebView || C.uygulama || DEMO && !/[?&]ses=1/.test(location.search)) return;
+    const d = S.durum || {}; const al = d.alarm || {}; const now = Date.now();
+    const bayat = !S.guncelleme || now - S.guncelleme > C.bayatSn * 1000;
+    const calsin = !bayat && al.aktif === true && !(al.susturma_bitis > now) && SES.susYerel < now;
+    const hazir = SES.ctx && SES.ctx.state === 'running';
+    let dugme = document.getElementById('sesAcDugme');
+    const goster = !hazir && (calsin || !sesIzinli());
+    if (goster && !dugme) {
+      dugme = document.createElement('button');
+      dugme.id = 'sesAcDugme'; dugme.type = 'button';
+      dugme.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:60;border:0;border-radius:999px;padding:10px 18px;font-weight:600;font-size:15px;font-family:inherit;color:#fff;background:#00B621;box-shadow:0 4px 14px rgba(0,0,0,.25)';
+      dugme.onclick = sesAc;
+      document.body.appendChild(dugme);
+    }
+    if (dugme) {
+      if (!goster) dugme.remove();
+      else { dugme.textContent = calsin ? '🔔 Alarm çalıyor, sesi açmak için dokun' : '🔔 Alarm sesini aç'; dugme.style.background = calsin ? '#d92d20' : '#00B621'; }
+    }
+    if (calsin && hazir && !SES.zaman) { sesBip(); SES.zaman = setInterval(sesBip, 2500); }
+    if ((!calsin || !hazir) && SES.zaman) { clearInterval(SES.zaman); SES.zaman = null; }
+  }
+  // Daha önce izin verildiyse sayfadaki ilk dokunuş sesi yeniden açar (tarayıcı kuralı)
+  document.addEventListener('pointerdown', () => { if (sesIzinli() && !(SES.ctx && SES.ctx.state === 'running')) sesAc(); }, { capture: true });
+
   function ciz() {
     // v3 tanıtım turu açıkken menü yeniden çizilirse tur yerini kaybeder; tur bitince bir kez çizilir
     if (S.turAcik) { S.turBekleyen = true; return; }
+    sesKontrol();
     const d = S.durum || {};
     const now = Date.now();
     const e = d.esikler || { soft: 3, alarm: 5, acil: 10 };
@@ -483,7 +532,10 @@
       };
     });
     if ($('yenilikTamam')) $('yenilikTamam').onclick = () => { try { localStorage.setItem('sb_yenilik_gordu', YENILIK.surum); } catch (e) { /* önemsiz */ } ciz(); };
-    document.querySelectorAll('[data-kom]').forEach((b) => { b.onclick = () => komutGonder({ tur: b.dataset.kom }, b); });
+    document.querySelectorAll('[data-kom]').forEach((b) => { b.onclick = () => {
+      if (b.dataset.kom === 'gordum') { SES.susYerel = Date.now() + 5 * 60000; sesKontrol(); }   // ses hemen kesilsin
+      komutGonder({ tur: b.dataset.kom }, b);
+    }; });
     document.querySelectorAll('[data-ata]').forEach((b) => { b.onclick = () => ataAc(talepler[+b.dataset.ata]); });
     document.querySelectorAll('[data-rata]').forEach((b) => {   // rezervasyona şoför atama (ileri tarihli: tüm şoförler listelenir)
       b.onclick = () => {
