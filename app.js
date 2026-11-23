@@ -220,18 +220,23 @@
       '<button class="ikonbtn' + (S.sekme === 'kayit' ? ' on' : '') + '" data-sekme="kayit" id="kayitAc" title="Kayıtlarda ara" aria-label="Kayıtlarda ara">' + ikon('ara') + '</button>' +
       (window.ReactNativeWebView ? '<button class="ikonbtn" id="bildAyar" title="Bildirim ayarları" aria-label="Bildirim ayarları">' + ikon('zil') + '</button>' : '') +
       (DEMO ? '' : '<button class="ikonbtn" id="cikis" title="Çıkış" aria-label="Çıkış">' + ikon('cikis') + '</button>') + '</header>' +
-      (sosList.length && S.sekme !== 'talep' ? '<a class="sos-bant" href="#" data-sekme="talep">' + ikon('uyari') + (sosList.length > 1 ? sosList.length + ' SOS bildirimi var' : 'SOS bildirimi var') + '<u>Aç</u></a>' : '') +
+      (sosList.length && S.sekme !== 'talep' && !(S.sekme === 'ozet' && sosList.some((x) => x.durum !== 'İnceleniyor' && x.durum !== 'Çözüldü')) ? '<a class="sos-bant" href="#" data-sekme="talep">' + ikon('uyari') + (sosList.length > 1 ? sosList.length + ' SOS bildirimi var' : 'SOS bildirimi var') + '<u>Aç</u></a>' : '') +
       '</div>';
 
     // Yenilikler: panel güncellenince her telefonda bir kez (Tamam'a basılana kadar) görünür.
     // Yeni sürümde YENILIK.surum değiştirilir ve maddeler yazılır.
     let yenilikGordu = '';
     try { yenilikGordu = localStorage.getItem('sb_yenilik_gordu') || ''; } catch (e) { yenilikGordu = YENILIK.surum; }
+    // Alarm anında (aktif SOS ya da bekleyen talep) Yenilikler kartı alarm kartlarının altına iner
+    const sosAktif = sosList.filter((x) => x.durum !== 'İnceleniyor' && x.durum !== 'Çözüldü');
+    const alarmVar = sosAktif.length > 0 || talepler.some((t) => !t.sessiz);
+    let yenilikH = '';
     if (yenilikGordu !== YENILIK.surum) {
-      h += '<div class="kart yenilik"><h2>Yenilikler <span>' + esc(YENILIK.tarih) + '</span></h2><ul>' +
+      yenilikH += '<div class="kart yenilik"><h2>Yenilikler <span>' + esc(YENILIK.tarih) + '</span></h2><ul>' +
         YENILIK.maddeler.map((m) => '<li><b>' + esc(m[0]) + '</b>' + esc(m[1]) + '</li>').join('') +
         '</ul><button class="btn yesil" id="yenilikTamam">Tamam</button></div>';
     }
+    if (!alarmVar) h += yenilikH;
 
     // Telefon bildirimi
     if (S.bildirim === 'kapali') h += '<div class="serit sari" style="display:flex;align-items:center;gap:10px"><span style="flex:1">🔔 Alarm gelince telefonun çalsın mı?</span><button class="atabtn" id="bildirimAc">Bildirimleri aç</button></div>';
@@ -271,11 +276,24 @@
     const enEski = aktif[0];
     const al = d.alarm || {};
     const susKalan = al.susturma_bitis && al.susturma_bitis > now ? Math.ceil((al.susturma_bitis - now) / 60000) : 0;
+    // SOS kartı: en üstte, kırmızı (kırmızı renk yalnız SOS için). Ayrıntı ve durum düğmeleri Operasyon'da.
+    if (sosAktif.length) {
+      const x = sosAktif[0];
+      const tel = x.bildiren_tel || x.sofor_tel || x.musteri_tel;
+      h += '<div class="durum ana sos-ana">' +
+        '<span class="bekleme acil">SOS' + (x.zaman ? ', ' + once(x.zaman) : '') + (sosAktif.length > 1 ? ' (+' + (sosAktif.length - 1) + ' SOS daha)' : '') + '</span>' +
+        '<b>' + esc(x.bildiren || 'Bir kullanıcı') + ' SOS bildirdi</b>' +
+        '<p>' + esc([x.neden, x.is_id ? 'İş #' + x.is_id : ''].filter(Boolean).join(', ') || 'Ayrıntı Operasyon\'da') + '</p>' +
+        (susKalan ? '<p class="sus">Alarm ' + susKalan + ' dakika susturuldu</p>' : '') +
+        '<div class="ikili"><button class="btn saydam" data-kom="gordum">Gördüm</button>' +
+        (tel ? '<a class="btn beyaz" href="tel:' + esc(String(tel).replace(/[^\d+]/g, '')) + '">Ara</a>' : '<button class="btn beyaz" data-sekme="talep">Ayrıntı</button>') +
+        '</div></div>';
+    }
     if (enEski) {
       const sv = seviye(enEski.yasDk, e);
       // Ana kart: logonun yeşili; ACİL eşiği geçince kırmızıya döner
       const dk = Math.floor(enEski.yasDk);
-      h += '<div class="durum ana' + (sv[0] === 'acil' ? ' acil' : '') + '">' +
+      h += '<div class="durum ana' + (sosAktif.length ? ' ikinci' : (sv[0] === 'acil' ? ' acil' : '')) + '">' +
         '<span class="bekleme ' + sv[0] + '">' + (dk < 1 ? 'Az önce geldi' : dk + ' dakikadır bekliyor') + '</span>' +
         '<b>' + (aktif.length > 1 ? aktif.length + ' talep şoför bekliyor' : 'Talep şoför bekliyor') + '</b>' +
         '<p class="rota"><i></i><span>' + esc(yerYaz(enEski.nereden)) + '</span><span class="hat"></span><s></s><span>' + esc(yerYaz(enEski.nereye)) + '</span></p>' +
@@ -285,11 +303,12 @@
     } else if (odSayi) {
       h += '<div class="durum ana"><span class="bekleme">Ödemeler</span><b>' + odSayi + ' ödeme onay bekliyor</b><p>Ödemeler sayfasından onaylayın.</p>' +
         '<div class="ikili"><button class="btn saydam" data-kom="gordum">Gördüm</button><button class="btn beyaz" data-kom="ilgileniyorum">İlgileniyorum</button></div></div>';
-    } else {
+    } else if (!sosAktif.length) {
       h += (!S.guncelleme || bayat)
         ? '<div class="durum ana sakin uyuyor">' + maskot('uyku') + '<div><b>İzleme kapalı</b><p>Bilgisayardaki eklentiden haber gelmiyor.</p></div></div>'
         : '<div class="durum ana sakin">' + maskot('yolunda') + '<div><b>Her şey yolunda</b><p>Bekleyen talep ve ödeme yok.</p></div></div>';
     }
+    if (alarmVar) h += yenilikH;
 
     // Admin panelde bakılması gerekenler (dokununca ilgili sayfa açılır)
     const say = d.sayilar || {};
