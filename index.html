@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
@@ -186,6 +186,17 @@ a.sos-bant u{margin-left:auto;text-decoration:none;color:#13261a}
 .btn.saydam{background:#ffffff2e;color:#fff;box-shadow:0 3px 0 #00000026}
 .btn.beyaz{background:#fff;color:var(--yol);box-shadow:0 3px 0 #00000026}
 .durum.ana.acil .btn.beyaz{color:#9c1426}
+/* Alarm: SOS en üstte kırmızı kart; SOS varken talep kartı sarı (kırmızı yalnız SOS) */
+.durum.ana.sos-ana{background:#e0202e;box-shadow:0 4px 0 #8f0f1b}
+.durum.ana.sos-ana .btn.beyaz{color:#8f0f1b}
+.durum.ana.sos-ana a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.durum.ana.ikinci{background:#ffb020;color:#1a1200;box-shadow:0 4px 0 #a86c00}
+.durum.ana.ikinci p,.durum.ana.ikinci .rota span{color:#1a1200}
+.durum.ana.ikinci .rota i{background:#1a1200}.durum.ana.ikinci .rota s{box-shadow:inset 0 0 0 2.5px #1a1200}.durum.ana.ikinci .rota .hat{background:#1a120066}
+.durum.ana.ikinci .bekleme{background:#1a1200;color:#ffb020}
+.durum.ana.ikinci .btn.saydam{background:#ffffff59;color:#1a1200}
+.durum.ana.ikinci .btn.beyaz{background:#1a1200;color:#ffb020}
+.durum.ana.ikinci::before,.durum.ana.ikinci::after{background:#1a120026}
 .btn:active{transform:translateY(2px)}
 .btn.mavi,.btn.yesil{background:var(--yesil);box-shadow:0 3px 0 var(--yol)}
 .btn.kirmizi{box-shadow:0 3px 0 #9c1426}
@@ -325,6 +336,6 @@ input,textarea{background:var(--kart);border-color:var(--cizgi)}
 <script src="kutuphane/dayjs-1.11.23-tr.js"></script>
 <script src="kutuphane/supabase-js-2.45.4.js"></script>
 <script src="config.js?v=20261122"></script>
-<script src="app.js?v=20261123d"></script>
+<script src="app.js?v=20261123e"></script>
 </body>
 </html>
