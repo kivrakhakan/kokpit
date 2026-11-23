@@ -683,8 +683,8 @@
         'Başvurunuzu belgeler henüz yokken de yapabilirsiniz; başvurunuz incelenir ve sizinle görüşülür. Ancak işe başlamadan önce SRC ve psikoteknik belgelerinizi tamamlamanız gerekiyor. ' +
         'SRC belgesi sürücü kursları üzerinden, psikoteknik belgesi ise yetkili psikoteknik merkezlerinden alınabiliyor.' +
         (basvurusu ? ' Başvurunuz #' + basvurusu.no + ' sistemimizde kayıtlı ve inceleme aşamasında.' : '');
-    } else if (var_('hesabımı kapat', 'hesabimi kapat', 'hesap kapat', 'hesabımı sil', 'hesabimi sil', 'hesap sil', 'hesabımın silin', 'hesabımı iptal',
-      'hesabımı dondur', 'üyeliğimi sil', 'üyeliğimi iptal', 'üyeliğimi kapat', 'üyelikten çık', 'üyeliğimin silin', 'kaydımı sil', 'verilerimi sil', 'hesabımı kaldır')) {
+    } else if (/(hesa[bp]|üyeli[kğ]|uyeli[kg]|kayd|kayıt|veriler)\S*(\s+\S+){0,3}?\s+(kapat|sil|iptal|dondur|sonlandır|sonlandir|kaldır|kaldir|feshet)/.test(metin) ||
+      var_('üyelikten çık', 'uygulamadan çıkmak ist', 'hesap kapatma', 'hesap silme')) {
       // Hesap kapatma talebi → uygulamadan kendisi iletsin (kullanıcı, 2026-11-23)
       govde = 'Hesabınızı kapatmak için uygulamada Profil > Yardım ve Destek bölümünün en altındaki "Hesap İşlemleri" kısmından talebinizi iletebilirsiniz. Talebiniz bize ulaştığında işleminizi gerçekleştireceğiz.';
     } else if (var_('başvur', 'şoför ol', 'evrak', 'belge', 'ehliyet', 'adli sicil', 'ekranım kapalı', 'onay') || (basvurusu && !var_('ödeme', 'iptal', 'gecik'))) {
