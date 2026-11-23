@@ -1325,6 +1325,35 @@
     return { q, tur: 'hepsi', at: Date.now(), kayitlar: l };
   }
 
+  /* ---------------- hata kaydı (2026-11-23): paneldeki hatalar buluta (hata_kayit) ---------------- */
+  // Giriş yapılmadan olan hatalar sırada bekler; aynı hata 10 dk'da bir, oturum başına en fazla 20 kez gönderilir.
+  const HATA = { sira: [], son: {}, sayi: 0 };
+  function hataYakala(mesaj, yer) {
+    mesaj = String(mesaj || '').slice(0, 500);
+    if (!mesaj || /ResizeObserver loop|^Script error\.?$/i.test(mesaj)) return;
+    const k = mesaj + '|' + (yer || ''), n = Date.now();
+    if (HATA.son[k] && n - HATA.son[k] < 600000) return;
+    HATA.son[k] = n;
+    if (HATA.sira.length < 10) HATA.sira.push({ mesaj, yer: String(yer || '').slice(0, 300) });
+    hataGonder();
+  }
+  async function hataGonder() {
+    if (DEMO || !S.db || !S.ekip || !HATA.sira.length) return;
+    const cihaz = cihazBilgi();
+    while (HATA.sira.length && HATA.sayi < 20) {
+      const h = HATA.sira.shift(); HATA.sayi++;
+      try { await S.db.rpc('hata_yaz', { veri: Object.assign(h, { surum: PANEL_V, cihaz: cihaz.cihaz + (cihaz.uygulama_surum ? ' ' + cihaz.uygulama_surum : '') }) }); } catch (e) { /* hata kaydı hatası sessiz kalır */ }
+    }
+  }
+  window.addEventListener('error', (e) => {
+    if (e.filename && !/app\.js|index\.html|kokpit/.test(e.filename)) return;   // tarayıcı eklentilerinin hataları değil
+    hataYakala(e.message, (e.filename || '').replace(/^.*\//, '').replace(/\?.*$/, '') + ':' + (e.lineno || 0));
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e.reason || {};
+    hataYakala('Söz tutulmadı: ' + (r.message || r), String(r.stack || '').split('\n')[1] || '');
+  });
+
   /* ---------------- v3: kim hangi cihazda, hangi sürümle (cihaz_izi) ---------------- */
   const PANEL_V = ((document.querySelector('script[src*="app.js?v="]') || {}).src || '').replace(/.*v=/, '') || 'uygulama içi kopya';
   function cihazBilgi() {
@@ -1336,6 +1365,7 @@
   }
   async function cihazIzi() {
     if (!S.ekip) return;
+    hataGonder();   // girişten önce biriken hatalar
     if (DEMO) {
       const n = Date.now();
       S.cihazlar = [
