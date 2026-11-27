@@ -453,6 +453,11 @@
 
     // Destek talepleri (son mesajı kişinin yazdığı = cevap bekleyen)
     h += '§destek§';
+    // Uygulama bildirimi (yalnız yönetici): Kayıtlar'daki formun aynısı burada da açılır (2026-11-28)
+    if (S.ekip && S.ekip.rol === 'yonetici') {
+      h += '<button class="btn dbil-ac" id="dbilAc" aria-expanded="' + !!S.dbil + '">' + (S.dbil ? 'Bildirim formunu kapat' : '📣 Üyelere bildirim gönder') + '</button>' +
+        (S.dbil ? '<div id="destekBildirimYer"></div>' : '');
+    }
     if (!destek.length) h += '<div class="kart">' + maskotBos('yolunda', 'Cevap bekleyen destek talebi yok') + '</div>';
     if (destek.length) {
       h += '<div class="kart" id="destekKart"><h2>Destek talepleri <span>' + destek.length + ' cevap bekliyor</span></h2>';
@@ -540,9 +545,17 @@
       (s[3] ? '<em>' + esc(s[3]) + '</em>' : '') + '</span>' + s[2] + '</button>').join('') + '</nav>';
 
     const eskiHarita = S.haritaEl && S.haritaEl.parentNode ? S.haritaEl.parentNode.removeChild(S.haritaEl) : S.haritaEl;
+    const odak = document.activeElement, odakSec = odak && odak.selectionStart;   // yeniden çizimde imleç korunur
     $('uygulama').innerHTML = goster;
     if (window.L && $('haritaYer')) haritaCiz(talepler, soforler, e, eskiHarita, musait, sosList);
-    if ($('kayitYer')) $('kayitYer').appendChild(kayitKur());
+    // Kayıtlar bölümü ve bildirim kartı yeniden çizimde aynı kalır; yazılan metin ve imleç korunur
+    if ($('kayitYer') || $('destekBildirimYer')) kayitKur();
+    if ($('kayitYer')) { if (KY.bk) KY.el.appendChild(KY.bk); $('kayitYer').appendChild(KY.el); }
+    if ($('destekBildirimYer') && KY.bk) $('destekBildirimYer').appendChild(KY.bk);
+    if (odak && odak !== document.activeElement && ((KY.el && KY.el.contains(odak)) || (KY.bk && KY.bk.contains(odak)))) {
+      try { odak.focus(); if (odakSec != null) odak.setSelectionRange(odakSec, odakSec); } catch (e) { /* önemsiz */ }
+    }
+    if ($('dbilAc')) $('dbilAc').onclick = () => { S.dbil = !S.dbil; ciz(); };
     document.querySelectorAll('[data-sos]').forEach((b) => {
       b.onclick = () => {
         const durum = b.dataset.sosd;
@@ -1193,6 +1206,7 @@
           '<p class="alt" style="margin-top:8px">Bildirimi açık bilgisayardaki eklenti gönderir. Gönderilen bildirim geri alınamaz.</p></div>'
         : '');
     KY.el = el;
+    KY.bk = el.querySelector('#kyBildirim');   // bildirim kartı: Kayıtlar ya da Destek sekmesine taşınır
     el.querySelector('#kyForm').onsubmit = (e) => { e.preventDefault(); kayitAra(); };
     el.querySelector('#kyCip').onclick = (e) => {
       const b = e.target.closest('[data-kt]');
@@ -1203,10 +1217,10 @@
     };
     el.querySelector('#kySonuc').onclick = (e) => { const s = e.target.closest('[data-ky]'); if (s) kayitDetay(KY.sonuc.kayitlar[+s.dataset.ky]); };
     if (yonetici) {
-      const on = () => { el.querySelector('#kyOb').textContent = el.querySelector('#kyBas').value.trim() || 'Başlık'; el.querySelector('#kyOm').textContent = el.querySelector('#kyMsj').value.trim(); };
-      el.querySelector('#kyBas').oninput = on;
-      el.querySelector('#kyMsj').oninput = on;
-      el.querySelector('#kyHedef').onclick = (e) => {
+      const on = () => { KY.bk.querySelector('#kyOb').textContent = KY.bk.querySelector('#kyBas').value.trim() || 'Başlık'; KY.bk.querySelector('#kyOm').textContent = KY.bk.querySelector('#kyMsj').value.trim(); };
+      KY.bk.querySelector('#kyBas').oninput = on;
+      KY.bk.querySelector('#kyMsj').oninput = on;
+      KY.bk.querySelector('#kyHedef').onclick = (e) => {
         const b = e.target.closest('[data-kh]');
         if (!b) return;
         KY.hedef = b.dataset.kh;
@@ -1219,7 +1233,7 @@
     return el;
   }
   function kayitHedefCiz() {
-    const h = KY.el.querySelector('#kyHedef');
+    const h = KY.bk && KY.bk.querySelector('#kyHedef');
     if (!h) return;
     const l = Object.keys(KY_HEDEF).map((k) => [k, KY_HEDEF[k]]);
     if (KY.uye) l.push(['uye', KY.uye.ad + ' (#' + KY.uye.no + ')']);
@@ -1289,7 +1303,7 @@
     if (x.tutar) h += bilgi('Tutar', esc(x.tutar));
     if (x.tarih) h += bilgi(x.t === 'uye' ? 'Kayıt' : 'Tarih', esc(x.tarih));
     if (/^\/admin\//.test(x.link || '')) h += '<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="' + ADMIN + esc(x.link.slice(1)) + '" target="_blank" rel="noopener">Sitede aç</a>';
-    if (x.t === 'uye' && KY.el.querySelector('#kyBildirim')) h += '<button class="btn yesil" id="kyUyeBil" style="margin-top:10px">Bu kişiye bildirim yaz</button>';
+    if (x.t === 'uye' && KY.bk) h += '<button class="btn yesil" id="kyUyeBil" style="margin-top:10px">Bu kişiye bildirim yaz</button>';
     const p = pencere(h);
     const b = $('kyUyeBil');
     if (b) b.onclick = () => {
@@ -1297,21 +1311,21 @@
       KY.uye = { no: x.no, ad: x.ad };
       KY.hedef = 'uye';
       kayitHedefCiz();
-      KY.el.querySelector('#kyBildirim').scrollIntoView({ behavior: 'smooth' });
-      KY.el.querySelector('#kyBas').focus();
+      KY.bk.scrollIntoView({ behavior: 'smooth' });
+      KY.bk.querySelector('#kyBas').focus();
     };
   }
   function kayitBildirimGonder() {
-    const bas = KY.el.querySelector('#kyBas').value.trim(), msj = KY.el.querySelector('#kyMsj').value.trim();
+    const bas = KY.bk.querySelector('#kyBas').value.trim(), msj = KY.bk.querySelector('#kyMsj').value.trim();
     if (!bas || !msj) { bildir('Başlık ve mesaj boş olamaz.'); return; }
     const kime = KY.hedef === 'uye' && KY.uye ? KY.uye.ad + ' (#' + KY.uye.no + ')' : KY_HEDEF[KY.hedef];
     if (!confirm('"' + bas + '" bildirimi şu kişilere gönderilsin mi?\n\n' + kime + '\n\nGönderilen bildirim geri alınamaz.')) return;
-    const b = KY.el.querySelector('#kyGonder');
+    const b = KY.bk.querySelector('#kyGonder');
     komutGonder({ tur: 'bildirim', ilan_tipi: KY.hedef, ilan_id: KY.hedef === 'uye' && KY.uye ? String(KY.uye.no) : null, metin: bas + '\n' + msj }, b, kime);
-    KY.el.querySelector('#kyBas').value = '';
-    KY.el.querySelector('#kyMsj').value = '';
-    KY.el.querySelector('#kyOb').textContent = 'Başlık';
-    KY.el.querySelector('#kyOm').textContent = '';
+    KY.bk.querySelector('#kyBas').value = '';
+    KY.bk.querySelector('#kyMsj').value = '';
+    KY.bk.querySelector('#kyOb').textContent = 'Başlık';
+    KY.bk.querySelector('#kyOm').textContent = '';
     setTimeout(() => { b.disabled = false; }, 3000);
   }
   function demoKayit(q) {
