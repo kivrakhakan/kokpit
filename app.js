@@ -324,6 +324,9 @@
     // "Cevap gerekmiyor" işaretlenenler kişi yeniden yazana kadar gizli (anahtar son mesaja bağlı)
     const destek = (Array.isArray(d.destek) ? d.destek : []).filter((t) => !S.tikler[destekAnahtar(t)]);
     if (destek.length) yap.push(['destek', destek.length + ' destek talebi cevap bekliyor', '#destek']);
+    // Hesap silme talepleri (2026-11-28): yalnız bekleyenler gelir; null = kaynak henüz okumuyor
+    const hsil = Array.isArray(d.hesap_silme) ? d.hesap_silme : null;
+    if (hsil && hsil.length) yap.push(['sofor', hsil.length + ' hesap silme talebi bekliyor', '#destek']);
     if (S.karne && S.ekip && S.karne.okuyanlar.indexOf(S.ekip.ad) === -1) yap.unshift(['karne', 'Haftalık rapor hazır: okuyup "Okudum" de', '#karne']);
     const bakilmamis = basv.filter((b) => !S.tikler[String(b.no)]).length;
     if (bakilmamis) yap.push(['belge', bakilmamis + ' şoför başvurusuna henüz bakılmadı', 'admin/sofor-basvurulari']);
@@ -458,6 +461,28 @@
       h += '<button class="btn dbil-ac" id="dbilAc" aria-expanded="' + !!S.dbil + '">' + (S.dbil ? 'Bildirim formunu kapat' : '📣 Üyelere bildirim gönder') + '</button>' +
         (S.dbil ? '<div id="destekBildirimYer"></div>' : '');
     }
+    // Hesap silme talepleri: liste herkese, Pasife al / Reddet yalnız yöneticiye (bulut da yalnız yöneticiye izin verir)
+    if (hsil) {
+      h += '<button class="btn dbil-ac" id="hsilAc" aria-expanded="' + !!S.hsil + '">' +
+        (S.hsil ? 'Hesap silme taleplerini kapat' : '🗂 Hesap silme talepleri' + (hsil.length ? ' <span class="rozet r-acil">' + hsil.length + ' bekliyor</span>' : '')) + '</button>';
+      if (S.hsil) {
+        const yon = S.ekip && S.ekip.rol === 'yonetici';
+        h += '<div class="kart" id="hsilKart"><h2>Hesap silme talepleri <span>' + hsil.length + ' bekliyor</span></h2>' +
+          '<p class="alt" style="margin:0 0 8px">Onaylanan talepte hesap silinmez, pasife alınır.</p>';
+        if (!hsil.length) h += '<div class="bos">Bekleyen hesap silme talebi yok.</div>';
+        hsil.forEach((x) => {
+          const kom = S.komutlar.find((k) => k.tur === 'hesap_karar' && String(k.ilan_id) === String(x.no) && k.durum === 'bekliyor');
+          const tel = x.tel ? '<a href="tel:0' + esc(String(x.tel).replace(/\D/g, '')) + '">0' + esc(x.tel) + '</a>' : '';
+          h += '<div class="hsil-satir"><div class="ad">' + esc(x.ad || 'Üye') + (x.uye_no ? ' <small style="display:inline">(üye #' + esc(x.uye_no) + ')</small>' : '') +
+            '<small>Talep #' + esc(x.no) + ' · ' + esc(x.tarih || '') + (tel ? ' · ' + tel : '') + (x.eposta ? ' · ' + esc(x.eposta) : '') + '</small></div>' +
+            (kom ? '<span class="rozet r-gri">işleniyor…</span>'
+              : yon ? '<div class="ikili"><button class="btn kirmizi" data-hk="' + esc(x.no) + '" data-hkk="pasife_al" data-hka="' + esc(x.ad || 'Üye') + '">Hesabı pasife al</button>' +
+                '<button class="btn" data-hk="' + esc(x.no) + '" data-hkk="reddet" data-hka="' + esc(x.ad || 'Üye') + '">Talebi reddet</button></div>'
+              : '<small class="alt">İşlem için yönetici yetkisi gerekir.</small>') + '</div>';
+        });
+        h += '</div>';
+      }
+    }
     if (!destek.length) h += '<div class="kart">' + maskotBos('yolunda', 'Cevap bekleyen destek talebi yok') + '</div>';
     if (destek.length) {
       h += '<div class="kart" id="destekKart"><h2>Destek talepleri <span>' + destek.length + ' cevap bekliyor</span></h2>';
@@ -507,7 +532,7 @@
     if (son.length) {
       h += '<div class="kart"><h2>Son işlemler</h2>';
       son.forEach((k) => {
-        const ne = k.tur === 'ata' ? 'şoför atama' : k.tur === 'bildirim' ? 'uygulama bildirimi: ' + esc(String(k.metin || '').split('\n')[0]) : k.tur === 'sos_durum' ? 'SOS #' + esc(k.ilan_id) + ' → ' + esc(k.metin || '') : k.tur === 'gordum' ? '"Gördüm"' : k.tur === 'destek_cevap' ? 'destek cevabı #' + esc(k.ilan_id) : '"İlgileniyorum"';
+        const ne = k.tur === 'ata' ? 'şoför atama' : k.tur === 'bildirim' ? 'uygulama bildirimi: ' + esc(String(k.metin || '').split('\n')[0]) : k.tur === 'sos_durum' ? 'SOS #' + esc(k.ilan_id) + ' → ' + esc(k.metin || '') : k.tur === 'gordum' ? '"Gördüm"' : k.tur === 'destek_cevap' ? 'destek cevabı #' + esc(k.ilan_id) : k.tur === 'hesap_karar' ? 'hesap silme #' + esc(k.ilan_id) + (k.metin === 'pasife_al' ? ' → pasife al' : ' → reddet') : '"İlgileniyorum"';
         const sonuc = k.durum === 'tamam' ? '✅' : k.durum === 'hata' ? '❌ ' + esc(k.mesaj || '') : '⏳ bekliyor';
         h += '<div class="kom"><b>' + esc(k.kim) + '</b> · ' + ne + ' · ' + trSaat(Date.parse(k.olusturma)) + ' · ' + sonuc + '</div>';
       });
@@ -556,6 +581,16 @@
       try { odak.focus(); if (odakSec != null) odak.setSelectionRange(odakSec, odakSec); } catch (e) { /* önemsiz */ }
     }
     if ($('dbilAc')) $('dbilAc').onclick = () => { S.dbil = !S.dbil; ciz(); };
+    if ($('hsilAc')) $('hsilAc').onclick = () => { S.hsil = !S.hsil; ciz(); };
+    // Özet'teki "hesap silme talebi bekliyor" satırı Destek'te listeyi açık getirir
+    document.querySelectorAll('a.satir.yap[data-sekme="destek"]').forEach((a) => { if (/hesap silme/.test(a.textContent)) a.addEventListener('click', () => { S.hsil = true; }, true); });
+    document.querySelectorAll('[data-hk]').forEach((b) => {
+      b.onclick = () => {
+        const pas = b.dataset.hkk === 'pasife_al', ad = b.dataset.hka;
+        if (!confirm(pas ? ad + ' adlı üyenin hesabı pasife alınsın mı?\n\nHesap silinmez, pasife alınır. Üye uygulamaya giremez.' : ad + ' adlı üyenin hesap silme talebi reddedilsin mi?')) return;
+        komutGonder({ tur: 'hesap_karar', ilan_id: String(b.dataset.hk), metin: b.dataset.hkk }, b, ad);
+      };
+    });
     document.querySelectorAll('[data-sos]').forEach((b) => {
       b.onclick = () => {
         const durum = b.dataset.sosd;
@@ -1421,7 +1456,7 @@
     const kayit = Object.assign({ kim: S.ekip.ad }, k);
     const { error } = await S.db.from('komutlar').insert(kayit);
     if (error) { bildir('Gönderilemedi: ' + error.message); if (btn) btn.disabled = false; return; }
-    bildir(k.tur === 'ata' ? ad + ' için atama gönderildi, bilgisayar yapıyor…' : k.tur === 'bildirim' ? ad + ' için bildirim sıraya alındı, bilgisayar gönderiyor…' : k.tur === 'destek_cevap' ? ad + ' için cevap gönderiliyor…' : k.tur === 'sos_durum' ? ad + ': "' + k.metin + '" gönderildi, bilgisayar yapıyor…' : k.tur === 'gordum' ? 'Alarm susturuluyor…' : 'Ekibe bildirildi');
+    bildir(k.tur === 'ata' ? ad + ' için atama gönderildi, bilgisayar yapıyor…' : k.tur === 'bildirim' ? ad + ' için bildirim sıraya alındı, bilgisayar gönderiyor…' : k.tur === 'destek_cevap' ? ad + ' için cevap gönderiliyor…' : k.tur === 'hesap_karar' ? ad + ': ' + (k.metin === 'pasife_al' ? 'hesap pasife alınıyor' : 'talep reddediliyor') + ', bilgisayar yapıyor…' : k.tur === 'sos_durum' ? ad + ': "' + k.metin + '" gönderildi, bilgisayar yapıyor…' : k.tur === 'gordum' ? 'Alarm susturuluyor…' : 'Ekibe bildirildi');
     if (Date.now() - S.guncelleme > C.bayatSn * 1000) bildir('Uyarı: şu an veri gelmiyor, işlemi yapacak açık bilgisayar olmayabilir.');
     komutlariYukle();
   }
@@ -1511,6 +1546,10 @@
         { id: 4, ad: 'Emre C.', durum: 'Çevrimdışı', cevrimici: false }
       ],
       odemeler: { rozet: 1, iban: [{ ref: 'SB-48213', tutar: '1.850 TL', yas_dk: 12 }] },
+      hesap_silme: [
+        { no: '6', ad: 'Örnek Üye', uye_no: '85', tel: '5550000085', eposta: 'ornek.uye@example.com', tarih: '21.11.2026 10:14', hesap: 'Aktif' },
+        { no: '5', ad: 'Deneme Kişi', uye_no: '169', tel: '5550000169', eposta: 'deneme@example.com', tarih: '19.11.2026 13:22', hesap: 'Aktif' }
+      ],
       destek: [
         { tip: 'uye', id: 16, ad: 'Örnek Başvuran', konu: 'Hesap ve Profil', son_hareket: '18.11.2026 23:40', mesajlar: [
           { kim: 'kisi', metin: 'Şoför olmak için üyelik başvurusu yaptım ekranım henüz kapalı sebebini merak ediyorum, evrakları eksiksiz ekledim', zaman: '18.11.2026 23:39' },
